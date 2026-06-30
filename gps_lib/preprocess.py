@@ -26,7 +26,8 @@ def clean_gps_points(track_points_df: pd.DataFrame, round_n: int = 4,
 def filter_by_time(df: pd.DataFrame, start, end, time_col: str = "get_time") -> pd.DataFrame:
     """Keep rows with start <= time_col <= end."""
     start, end = pd.to_datetime(start), pd.to_datetime(end)
-    return df[(df[time_col] >= start) & (df[time_col] <= end)]
+    times = pd.to_datetime(df[time_col], errors="coerce")
+    return df[(times >= start) & (times <= end)]
 
 
 def attach_technic_info(track_points_df: pd.DataFrame, tracker_list_df: pd.DataFrame) -> pd.DataFrame:
