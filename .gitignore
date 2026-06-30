@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (raw GPS/zone/DEM data — large and/or mine-operational, not for git)
+data/*
+!data/.gitkeep
+
+# OS
+.DS_Store
