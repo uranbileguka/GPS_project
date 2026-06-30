@@ -2,6 +2,25 @@
 
 *Draft v0.1 — working title, not final*
 
+---
+
+> **Plain-language primer: the loading cycle (background only, not part of the manuscript text)**
+>
+> For readers unfamiliar with open-pit haul operations, here is the physical cycle at a stockpile that this paper is trying to measure from GPS data alone:
+>
+> 1. Loader drives up to the stockpile.
+> 2. Loader scoops coal into its bucket.
+> 3. Truck waits in line at the loading spot.
+> 4. Loader dumps coal into the truck bed — usually 3–6 scoops to fill it.
+> 5. Truck drives away to its destination.
+> 6. Next truck pulls into position.
+> 7. Loader goes back to the stockpile.
+> 8. Repeat.
+>
+> Mapped to the paper's terms (Section 4.4): step 3 is **queuing**, step 4 is **operating**, step 5 is **transit**. Section 4.3's "load-zone dwell" covers steps 3–4 together.
+
+---
+
 ## Abstract
 
 *(write last — ~200 words once Results are filled in)*
