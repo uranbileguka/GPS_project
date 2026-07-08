@@ -1,4 +1,4 @@
-"""SRTM DEM download, unzip, and merge utilities."""
+"""SRTM DEM download, unzip, merge, and sampling utilities."""
 import glob
 import gzip
 import math
@@ -7,9 +7,13 @@ import shutil
 from pathlib import Path
 from typing import List, Optional
 
+import numpy as np
+import pandas as pd
 import rasterio
 import requests
 from rasterio.merge import merge
+
+from . import routes
 
 
 def download_srtm_tile(lat: int, lng: int, save_dir: str) -> Optional[Path]:
@@ -74,3 +78,26 @@ def merge_dem_tiles(tile_dir: str, out_path: str) -> str:
         for s in srcs:
             s.close()
     return out_path
+
+
+def sample_elevation(dem_path: str, lats, lngs) -> np.ndarray:
+    """Sample elevation (m) from a merged DEM raster at the given (lat, lng) points."""
+    with rasterio.open(dem_path) as src:
+        return np.array([v[0] for v in src.sample(zip(lngs, lats))], dtype=float)
+
+
+def add_segment_grade(dem_path: str, points_df: pd.DataFrame) -> pd.DataFrame:
+    """Add elevation and grade (%) since the previous point along a route's
+    points, for grade/slope as a haul-segment travel-time covariate
+    (Section 4.5 — loaded uphill vs. empty downhill).
+
+    points_df must be sorted in trajectory order (e.g. one tracker's pings
+    sorted by get_time).
+    """
+    df = points_df.reset_index(drop=True).copy()
+    df["elevation_m"] = sample_elevation(dem_path, df["lat"].values, df["lng"].values)
+
+    dz = df["elevation_m"].diff()
+    dist_m = routes.haversine(df["lng"].shift(), df["lat"].shift(), df["lng"], df["lat"])
+    df["grade_pct"] = (dz / dist_m.replace(0, np.nan)) * 100
+    return df

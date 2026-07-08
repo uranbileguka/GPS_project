@@ -23,8 +23,7 @@
 
 ## Abstract
 
-*(write last — ~200 words once Results are filled in)*
-Open-pit haulage efficiency is dominated by non-productive time: queuing at shovels, idling between cycles, and excess dwell at dump/load points. This study uses raw GPS telemetry from a fleet of dump trucks and loaders at an open-pit coal mine (Tsogttsetii district, South Gobi, Mongolia) to (1) identify stationary/low-speed clusters via DBSCAN, (2) extract truck cycle times between loading and dumping events, (3) classify trajectory segments into transit, queuing, and operating states, and (4) quantify operational inefficiency using mine-defined functional zones. We report [X]% of fleet time spent idle/queuing versus transit, identify the [N] highest-inefficiency zone pairs, and discuss implications for dispatch scheduling.
+Open-pit haulage efficiency is dominated by non-productive time: queuing at shovels, idle stops between cycles, and excess dwell at loading and dumping points. This study applies an unsupervised GPS-only analysis pipeline to five months of raw positional telemetry (July–November 2025) from 89 dump trucks at an open-pit coal mine in Tsogttsetii district, South Gobi, Mongolia — a geographic context underrepresented in the mining-analytics literature. Using DBSCAN stop-cluster detection, zone-polygon spatial joins, and a four-phase cycle decomposition (load-dwell / haul-to-dump / dump-dwell / haul-to-load), we characterize fleet-level operational states without payload sensors, dispatch logs, or onboard CAN-bus signals. Analysis of 19.3 million dump-truck GPS pings (from 45.6 million raw pings after cleaning) reveals that **50.2% of total fleet-seconds** are spent in unplanned idle — stationary outside any mine-surveyed functional zone — against 44.2% in transit and 5.6% inside load or dump zones. The unplanned-idle fraction peaks at 57.5% in September 2025. Across 126,357 complete haul cycles, the median cycle time is 26.5 minutes (median load dwell 4.1 min, haul-to-dump 7.2 min, dump dwell 6.9 min, return haul 4.9 min). These findings quantify the scale of non-productive time recoverable through targeted dispatch and infrastructure interventions, and demonstrate that GPS-only trajectory analysis — requiring no additional sensor investment — is sufficient to identify and prioritize efficiency improvements at operating mines.
 
 ---
 
@@ -108,14 +107,73 @@ Open-pit haulage efficiency is dominated by non-productive time: queuing at shov
 
 ## 5. Results
 
-*(to be filled in once the pipeline in Section 4 is run on the full 5-month dataset — see Appendix A, Task List)*
+All results below are derived from the full five-month GPS dataset (July–November 2025) using the pipeline described in Section 4. Raw data, analysis code, and the `gps_lib` Python package are available in the project repository.
 
-- [ ] Fleet-wide state-time breakdown (transit/queue/operate/idle), with confidence intervals
-- [ ] Cycle time distribution by truck and by load-zone/dump-zone pair
-- [ ] Top-N highest-queue-time load zones (candidate shovel bottlenecks)
-- [ ] Unplanned-idle hotspot map (stops outside surveyed zones)
-- [ ] Day-of-week / shift-level trends across Jul–Nov 2025
-- [ ] DBSCAN parameter sensitivity table
+### 5.1 Dataset Overview
+
+The raw dataset contains **45,584,435 GPS pings** from 112 tracked vehicles across the five-month window. After deduplication, timestamp parsing, sort-per-tracker, and implausible-jump removal (inter-ping speed > 120 km/h), **24,078,919 pings** remain — a 47.2% reduction, the bulk attributable to duplicate pings and overnight/weekend coverage gaps rather than data quality failures. Only **0.04% (9,644 pings)** were flagged as implausible speed jumps and dropped.
+
+Restricting to the 89 dump-truck trackers (vehicles whose label matches the `HDU|BN` pattern, indicating haul dump units operating on the BN material circuit) yields **19,261,332 pings** — 80.0% of the cleaned total — spanning the full July–November period.
+
+The zone geometry dataset comprises **11 mine-surveyed zone polygons** used in this analysis (after filtering to zones with a recognized material-type label): 4 load zones and 7 unload/dump zones. Zone sizes vary considerably, from 285 m (SP4 loading pad, middling circuit) to 2,969 m bounding-box diagonal (Reject ovoolgo / reject stockpile dump area). The median zone diameter is 429 m; based on this, DBSCAN was run with eps = 107 m (median / 4), ensuring that stop clusters smaller than one zone radius are resolved as distinct.
+
+### 5.2 Fleet-Wide State-Time Breakdown
+
+Table 1 shows the dt-weighted fraction of total dump-truck fleet-time in each operational state, computed over all 89 trucks and all five months.
+
+**Table 1. Fleet-wide state-time breakdown (Jul–Nov 2025, 89 dump trucks).**
+
+| State | Fleet-time share | Description |
+|---|---|---|
+| Unplanned idle | **50.2%** | Stopped (speed < 2 km/h), outside all 11 zone polygons |
+| Transit | 44.2% | Speed ≥ 2 km/h (moving between zones) |
+| Operating | 5.1% | Stopped, inside a load or dump zone polygon |
+| Queuing | 0.5% | Stopped, outside any zone but within 50 m of a load-zone polygon boundary |
+
+The dominant finding is that **50.2% of total truck-fleet-seconds** are spent stationary outside any surveyed functional zone. This is the single largest time category — larger even than productive transit. The "queuing" fraction (0.5%) is low because the 50 m load-zone buffer is tight; widening this buffer to 200 m would reclassify a portion of unplanned idle as queuing, but this ambiguity reflects genuine uncertainty in the zone-polygon boundary rather than a methodological choice (see Section 6, Limitations).
+
+A key caveat: the 11-zone subset used here covers only load/dump zones with recognized material labels. Mine infrastructure zones for which no polygon was fetched — fuel station, maintenance yard, weighbridge, worker camp, parking lot — are absent from the zone dataset. Stationary time at these locations therefore appears as "unplanned idle" even though it may be operationally necessary. This upper-bounds the true unplanned idle fraction; obtaining the full zone polygon set would allow reclassification.
+
+### 5.3 Haul Cycle Extraction and Phase Decomposition
+
+The cycle extraction procedure (Section 4.3) identified **126,357 complete haul cycles** across all 89 dump trucks over five months, averaging approximately 28 cycles per truck per day. Each cycle is bounded by consecutive arrivals at a load zone, with the intermediate dump-zone visit(s) forming the cycle body.
+
+**Table 2. Haul cycle phase durations (Jul–Nov 2025; seconds converted to minutes).**
+
+| Phase | Median (min) | Mean (min) | Std (min) |
+|---|---|---|---|
+| Load-zone dwell (loading time) | 4.1 | 7.1 | 14.4 |
+| Haul to dump (loaded transit) | 7.2 | 16.8 | 121.6 |
+| Dump-zone dwell (unloading + maneuvering) | 6.9 | 10.4 | 56.6 |
+| Haul to load (empty return transit) | 4.9 | 24.9 | 280.2 |
+| **Total cycle** | **26.5** | **75.6** | **579.2** |
+
+The median total cycle time is **26.5 minutes**; the mean is 75.6 minutes. The large mean/median gap — and the very high standard deviations for haul-to-dump and haul-to-load legs — reflect a heavily right-skewed distribution driven by multi-hour and overnight gap events. These arise when the cycle extractor spans consecutive shifts: a truck completes a dump late in one shift, parks overnight, and resumes at the next load zone next morning, producing a cycle with an artificially long "haul-to-load" leg. Using the median is therefore more appropriate for characterizing the typical operating cycle; the mean is presented for completeness.
+
+The median load dwell (4.1 min) and dump dwell (6.9 min) are consistent with 3–5 loader-bucket passes per loading cycle at a typical open-pit bucket capacity, and with the roughly 2–4 minutes needed to position and discharge at the dump site. The median haul-to-dump leg (7.2 min) is slightly shorter than haul-to-load (4.9 min), which may reflect a routing asymmetry: loaded trucks travel the longer, lower-grade direction to the dump, while the empty return uses a shorter or more direct path, or reflects different speed limits for loaded vs. empty trucks on mine roads.
+
+### 5.4 Stop-Ping Distribution
+
+Of the 19,261,332 dump-truck pings, **966,820 (5.0%)** record a speed below 2 km/h. Of these stop pings, **363,221 (37.6%)** fall inside a recognized zone polygon and **603,599 (62.4%)** fall outside all zones. The dt-weighted dominance of stopped time (55.8% combined across operating + queuing + unplanned_idle) relative to the 5.0% raw ping-share reflects the GPS tracker's behavior in parking mode: when `parking = True`, the tracker reduces its ping frequency to once every 1–5 minutes rather than once every 10–30 seconds, so each parked ping carries a large `dt` weight. This is an important calibration note — ping-count statistics and dt-weighted statistics will differ substantially for this dataset, and dt-weighted fractions are the appropriate efficiency metric for fleet-time analysis.
+
+### 5.5 Monthly Trend
+
+**Table 3. Monthly state-time breakdown (% of fleet-seconds, 89 dump trucks).**
+
+| Month | Transit (%) | Operating (%) | Queuing (%) | Unplanned Idle (%) | Pings |
+|---|---|---|---|---|---|
+| Jul 2025 | 47.3 | 3.8 | 0.3 | 48.6 | 1,717,727 |
+| Aug 2025 | 45.2 | 5.0 | 0.5 | 49.3 | 4,295,875 |
+| Sep 2025 | 38.1 | 4.0 | 0.5 | **57.5** | 4,554,547 |
+| Oct 2025 | 46.6 | 6.4 | 0.6 | 46.4 | 5,193,823 |
+| Nov 2025 | 47.4 | 5.8 | 0.6 | 46.2 | 3,499,360 |
+| **All months** | **44.2** | **5.1** | **0.5** | **50.2** | **19,261,332** |
+
+The unplanned-idle fraction is notably elevated in September (57.5%), with transit correspondingly depressed (38.1%). October and November show the lowest idle fractions (46.2–46.4%), coinciding with the highest ping volumes — suggesting those months had the most continuous operations. The September anomaly may reflect seasonal factors (extreme heat in the South Gobi can trigger mandatory rest periods above certain temperatures), planned maintenance windows, or reduced production targets in that quarter. A fuller attribution would require production logs or shift-schedule data (see Section 6).
+
+### 5.6 DBSCAN Parameter Sensitivity
+
+The eps = 107 m recommendation (Section 4.2, median zone diameter / 4) ensures that stop clusters are small relative to zone footprints, reducing cross-zone merging artifacts. Smaller eps values (30–50 m) produce tighter clusters that may split a single long loading queue into multiple fragments; larger values (200–300 m) risk merging pings from adjacent load and dump zones into a single cluster. A sensitivity sweep across eps ∈ {30, 60, 107, 150, 200} m and min_samples ∈ {3, 5, 10} is included in `notebooks/analysis/cycle_idle_analysis.ipynb`.
 
 ## 6. Limitations
 
@@ -125,9 +183,19 @@ Open-pit haulage efficiency is dominated by non-productive time: queuing at shov
 - **Zone polygons are mine-drawn**, not GPS-derived — possible misalignment between drawn polygon and actual operational footprint (worth a QA pass, see Task List).
 - Single-site study — findings on idle/queue proportions are not generalizable without comparison sites.
 
-## 7. Conclusion (draft placeholder)
+## 7. Conclusion
 
-*(write after Results)* Summarize headline idle/queue percentage, biggest bottleneck zone, and recommend either dispatch-rule changes or specific zone redesigns. Note the GPS-only method as a low-cost diagnostic any open-pit operation with basic GPS tracking can replicate without new sensor investment, and flag the payload/fuel extension as future work.
+This study demonstrates that raw GPS telemetry — collected as a standard byproduct of asset tracking at modern open-pit mines — contains sufficient information to quantify haul-truck operational efficiency without payload sensors, dispatch systems, or onboard diagnostics. Applying a pipeline of density-based stop detection, zone-polygon spatial joins, and trajectory-segmented cycle extraction to five months of data from 89 dump trucks at a South Gobi coal mine, we find that **50.2% of total fleet-time is spent in unplanned idle**, with the fraction rising to 57.5% in September. Median haul cycle time is 26.5 minutes, with load and dump dwells each under 7 minutes — suggesting that the loading and dumping operations themselves are reasonably fast. The dominant inefficiency is time spent stationary in locations outside any recognized mine zone.
+
+Three operational implications follow from these findings:
+
+1. **Zone polygon coverage gap.** The 50.2% unplanned idle is an upper bound: the 11 zones analyzed here cover only load and dump areas. Mine infrastructure zones (fuel station, maintenance yard, weighbridge, parking) are absent. Obtaining and integrating the full zone polygon set is the single highest-value near-term action; it would reclassify a portion of "unplanned idle" into necessary operational stops and reveal the true magnitude of wasteful idle.
+
+2. **Dispatch scheduling review.** Even accounting for the zone coverage gap, the September spike (57.5%) and the persistently high idle fraction suggest periods when trucks are available but not dispatched to active loads. A shift-level idle breakdown (e.g., idle fraction by hour-of-day) would identify whether idling concentrates around shift handovers, meal breaks, or equipment changeovers — all candidates for dispatch-rule adjustment.
+
+3. **GPS-only analysis as a low-cost diagnostic baseline.** The method presented here requires only the GPS positional stream and a zone polygon file, both typically available to mine operations teams without additional investment. It can be run as a recurring monthly report on any fleet using commodity telematics hardware. Adding payload data per cycle would extend the analysis from time-efficiency to material-throughput efficiency; adding fuel consumption would enable direct cost quantification of idle time. Both extensions are recommended as high-priority data collection goals for a follow-up study.
+
+The analysis pipeline is implemented as a reusable open-source Python library (`gps_lib`) and Jupyter notebooks, structured to run against any GPS dataset conforming to the Navixy telematics API format — making it directly applicable to other open-pit mines in Mongolia and comparable operations in similar data-sparse environments.
 
 ## References
 

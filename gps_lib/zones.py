@@ -12,7 +12,7 @@ import pandas as pd
 
 try:
     import geopandas as gpd
-    from shapely.geometry import Point, Polygon
+    from shapely.geometry import Polygon
 except ImportError:  # geopandas/shapely only needed for shapely-based zone hit testing
     gpd = None
 
@@ -56,22 +56,68 @@ def build_zone_geodataframe(zone_detail_df: pd.DataFrame, zone_meta_df: pd.DataF
     return zone_gdf.merge(zone_meta_df[meta_cols], left_on="zone_id", right_on="id", how="left")
 
 
+def zone_diameter_stats(zones_gdf) -> pd.DataFrame:
+    """Per-zone bounding-box diagonal in meters — used to pick a DBSCAN eps
+    that's small relative to real zone size (so stop-clusters don't spill
+    across adjacent zones).
+    """
+    from . import routes
+
+    rows = []
+    for _, z in zones_gdf.iterrows():
+        minx, miny, maxx, maxy = z["geometry"].bounds
+        rows.append({
+            "zone_id": z["zone_id"],
+            "label": z.get("label"),
+            "zone_material_type": z.get("zone_material_type"),
+            "diameter_m": routes.haversine(minx, miny, maxx, maxy),
+        })
+    return pd.DataFrame(rows).sort_values("diameter_m").reset_index(drop=True)
+
+
+def zone_ping_density(gps_df: pd.DataFrame, zones_gdf, speed_col: str = "speed",
+                       speed_threshold: float = 2.0) -> pd.DataFrame:
+    """Count of low-speed/stopped GPS pings falling inside each zone polygon.
+
+    A QA check for whether mine-drawn zone polygons line up with where
+    trucks actually stop: zones with ~0 stopped pings despite being labeled
+    load/dump/fuel/repair are candidates for stale or mis-drawn geometry.
+    """
+    stopped = gps_df[gps_df[speed_col] < speed_threshold] if speed_col in gps_df.columns else gps_df
+    hits = assign_zone_hit(stopped, zones_gdf)
+    counts = hits.groupby("zone_id_hit").size().rename("n_stopped_pings")
+
+    out = zones_gdf[["zone_id", "label", "zone_material_type", "zone_load_type"]].merge(
+        counts, left_on="zone_id", right_index=True, how="left"
+    )
+    out["n_stopped_pings"] = out["n_stopped_pings"].fillna(0).astype(int)
+    return out.sort_values("n_stopped_pings").reset_index(drop=True)
+
+
 def assign_zone_hit(gps_df: pd.DataFrame, zones_gdf) -> pd.DataFrame:
-    """For each GPS ping, find which zone polygon (if any) it falls inside."""
+    """For each GPS ping, find which zone polygon (if any) it falls inside.
+
+    Uses a spatial join (sjoin) against zones_gdf's spatial index rather
+    than a per-row polygon scan — needed to run on fleet-scale (1M+ ping)
+    datasets in reasonable time. If a ping falls inside more than one
+    overlapping zone, the first match is kept.
+    """
     if gpd is None:
         raise ImportError("geopandas and shapely are required for assign_zone_hit")
 
-    def _hit(row) -> pd.Series:
-        p = Point(row["lng"], row["lat"])
-        for _, z in zones_gdf.iterrows():
-            if p.within(z["geometry"]):
-                return pd.Series({
-                    "zone_id_hit": z["zone_id"],
-                    "zone_mat_hit": z["zone_material_type"],
-                    "zone_load_hit": z["zone_load_type"],
-                })
-        return pd.Series({"zone_id_hit": None, "zone_mat_hit": None, "zone_load_hit": None})
+    df = gps_df.reset_index(drop=True)
+    points = gpd.GeoDataFrame(
+        df, geometry=gpd.points_from_xy(df["lng"], df["lat"]), crs=zones_gdf.crs,
+    )
+    joined = gpd.sjoin(
+        points,
+        zones_gdf[["zone_id", "zone_material_type", "zone_load_type", "geometry"]],
+        how="left", predicate="within",
+    )
+    joined = joined[~joined.index.duplicated(keep="first")].sort_index()
 
-    df = gps_df.copy()
-    df[["zone_id_hit", "zone_mat_hit", "zone_load_hit"]] = df.apply(_hit, axis=1)
-    return df
+    out = df.copy()
+    out["zone_id_hit"] = joined["zone_id"].values
+    out["zone_mat_hit"] = joined["zone_material_type"].values
+    out["zone_load_hit"] = joined["zone_load_type"].values
+    return out
