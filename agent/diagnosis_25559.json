@@ -1,0 +1,102 @@
+{
+  "zone_id": 25559,
+  "name": "BN load (Баруун наран /Зүүн/)",
+  "region": "bn",
+  "month": "2025-11",
+  "unload_zone": 25685,
+  "haul_km": 34,
+  "throughput": {
+    "loads_day": 80.6,
+    "cycles_per_truck_day": 3.66,
+    "trucks": 22,
+    "days": 30,
+    "best_day": 109
+  },
+  "cycle": {
+    "full_cycle_min": 222.1,
+    "svc_load_min": 16.2,
+    "ff_haul_min": 60.2,
+    "ff_return_min": 49.6,
+    "svc_dump_min": 3.5
+  },
+  "capacity": {
+    "service_rate_load": 7.3,
+    "op_hours": 22,
+    "shovel_ceiling": 160,
+    "utilisation": 0.5,
+    "dump_rate_p90": 7.0
+  },
+  "attribution": {
+    "recoverable_truck_h": {
+      "load_queue": 984,
+      "idle_stand": 5580,
+      "haul_road": 625,
+      "return_road": 1567,
+      "dump": 615
+    },
+    "total_truck_h": 9371,
+    "share_pct": {
+      "load_queue": 10,
+      "idle_stand": 60,
+      "haul_road": 7,
+      "return_road": 17,
+      "dump": 7
+    }
+  },
+  "decision": {
+    "binding_now": "truck idle + arrival bunching",
+    "shifts_to": "shovel (loading)",
+    "road_helps": true,
+    "supply_cut_idle": 131,
+    "ceiling_with_road": 160,
+    "shovel_ceiling": 160
+  },
+  "recommendations": [
+    {
+      "rank": 1,
+      "key": "idle_bunching",
+      "lever": "Smooth arrivals + cut standing time (dispatch / headway control)",
+      "mechanism": "de-bunch convoys so trucks meet the shovel evenly; overlap shift changes; in-field refuel; reduce inter-cycle parking",
+      "anchor": "truck-shovel dispatch & queueing theory (bunching wastes shovel capacity)",
+      "caveat": "needs no capex, but assumes standing time is genuinely recoverable (some is legit breaks/maintenance).",
+      "recoverable_truck_h": 6563,
+      "throughput_now": "81 -> 131 loads/day (+62%)",
+      "prereq": "none",
+      "note": "binding constraint NOW; free (no capex)"
+    },
+    {
+      "rank": 2,
+      "key": "return_road",
+      "lever": "Empty-return road improvement (surface/grade/width, speed at terminals)",
+      "mechanism": "raise empty-haul speed toward free-flow; delay concentrated at the two terminals, open road is already efficient",
+      "anchor": "haul-road rolling resistance / road resistance vs truck productivity",
+      "caveat": "only lifts throughput AFTER trucks are cycle-bound, and only up to the shovel ceiling.",
+      "recoverable_truck_h": 2192,
+      "throughput_now": "~0 while idle-bound",
+      "throughput_after_prereq": "131 -> 160 loads/day",
+      "prereq": "fix idle/bunching first",
+      "note": "shortens cycle; capped by shovel ceiling"
+    },
+    {
+      "rank": 3,
+      "key": "shovel",
+      "lever": "Expand loading capacity (2nd loading position / faster load / bigger bucket)",
+      "mechanism": "raise the shovel service rate = raise the throughput ceiling",
+      "anchor": "theory of constraints — elevate the binding constraint",
+      "caveat": "capex; only pays ABOVE the current shovel ceiling, i.e. after idle and road are already fixed.",
+      "recoverable_truck_h": null,
+      "throughput_now": "0 (shovel has spare now)",
+      "throughput_after_prereq": "raises ceiling above 160/day",
+      "prereq": "only after idle+road push throughput to the shovel ceiling",
+      "note": "capex; last, not first"
+    }
+  ],
+  "caveats": [
+    "Nov-only",
+    "cycle-level free-flow baselines (p15/p20)",
+    "recoverable hours = UPPER BOUND",
+    "idle_stand includes legit breaks",
+    "no payload -> units are loads/truck-hours",
+    "DIAGNOSTIC not proof — needs before/after pilot"
+  ]
+}
