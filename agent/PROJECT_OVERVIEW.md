@@ -27,6 +27,10 @@ GPS pings → cycles → attribution → decision → recommendation → explana
 
 First we find the cycles. Then we measure where time is lost in each cycle. Then we use a simple operations-research method (Theory of Constraints) to find the *real* bottleneck, not just the biggest delay. Finally we map the bottleneck to a known action and explain it in simple words.
 
+![Pipeline and method per layer](agent_pipeline.png)
+
+*Figure 1. The four layers of the agent and the method used in each one. Layers 1–3 need no training and no machine learning; layer 4 uses an LLM only to explain the result in plain words.*
+
 ## 4. How we build the agent (four layers)
 
 The agent has four layers. Everything before the last layer is interpretable and needs **no training and no machine learning** — this is important because we have no ground-truth labels for "cause".
