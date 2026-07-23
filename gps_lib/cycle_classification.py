@@ -146,3 +146,17 @@ def state_time_breakdown(df: pd.DataFrame, state_col: str = "state", dt_col: str
     valid = df[df[dt_col].notna() & (df[dt_col] > 0)]
     total = valid[dt_col].sum()
     return (valid.groupby(state_col)[dt_col].sum() / total).sort_values(ascending=False)
+
+
+def state_time_breakdown_by_tracker(df: pd.DataFrame, tracker_col: str = "tracker_id",
+                                     state_col: str = "state", dt_col: str = "dt") -> pd.DataFrame:
+    """Per-tracker version of state_time_breakdown: for each tracker_id, the
+    dt-weighted fraction of its own tracked time spent in each state.
+
+    Returns a DataFrame indexed by tracker_col, one column per state, rows
+    summing to 1.0 (a tracker with zero valid dt is dropped, not NaN-filled).
+    """
+    valid = df[df[dt_col].notna() & (df[dt_col] > 0)]
+    totals = valid.groupby(tracker_col)[dt_col].sum()
+    by_state = valid.groupby([tracker_col, state_col])[dt_col].sum().unstack(fill_value=0)
+    return by_state.div(totals, axis=0)

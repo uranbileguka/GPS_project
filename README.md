@@ -5,6 +5,23 @@ a Navixy-style tracking API, cleaned and joined to mine zone polygons, and
 analyzed for tracker paths, zone-to-zone haul routes, route clustering, and
 elevation/grade context.
 
+## Run the analysis (quick start)
+
+Use the **Anaconda kernel** in Jupyter (not system Python — geopandas/rasterio are installed there).
+
+| Step | Notebook | What to check |
+|---|---|---|
+| 1 | `notebooks/data.ipynb` | All 5 monthly CSV files show sizes > 0 and correct date ranges |
+| 2 | `notebooks/analysis/data_qa.ipynb` | 11 zones loaded, DBSCAN eps ~107 m printed, all zones have stopped-ping counts > 0 |
+| 3 | `notebooks/analysis/cycle_idle_analysis.ipynb` | **Main results** — takes 5–10 min. Expect: 19.3M dump-truck pings, **50.2% unplanned idle**, 126,357 cycles, median cycle 26.5 min |
+
+**Common issues**
+
+- `OSError: [Errno 89]` on a CSV → file is OneDrive cloud-only; open it in Finder to download, then re-run
+- `ModuleNotFoundError: geopandas` → wrong kernel selected, switch to Anaconda
+- `FileNotFoundError: No gps_data_*.csv` → check `GPS_DATA_DIR` in your `.env` points to the OneDrive data folder
+- Stale module after editing `gps_lib` → run the `importlib.reload` cell near the top of the notebook
+
 ## Layout
 
 ```
