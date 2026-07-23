@@ -46,11 +46,13 @@ The agent has four layers. Everything before the last layer is interpretable and
 ## 5. Example result — BN load zone
 
 - Current: 80.6 loads/day, 22 trucks, cycle about 222 minutes.
-- The shovel can do about 7.3 loads/hour but is used only about 50%. So the shovel is **not** the bottleneck.
-- The real problem is **trucks standing idle and arriving in convoys (bunching)**.
-- Prize order: cut idle and smooth arrivals (no new equipment) can lift 81 → 131 loads/day (+62%); then better roads push to about 160 (the shovel ceiling); expanding the shovel only pays above 160.
+- The shovel can load about 7.3 trucks/hour but is used only about 50% — so the shovel is **not** the bottleneck.
+- Two things cost loads: trucks **queue at the shovel and lose time on the road** (waste while actively cycling), and the fleet is **parked or off-shift** a large share of the month.
+- Realistic prize (keeping today's fleet hours): cutting the queue and improving the road can lift 81 → about **124 loads/day (+54%)**, close to the best day already observed (109). Running more truck-hours (extra shifts, more available trucks) can push toward the shovel ceiling (~160), but that is a **separate staffing decision** — about 4,366 truck-hours a month is downtime, not dispatch waste.
 
-We also ran the *same code* on a different flow (Middling). It gave a different answer (short cycle, road not important, shovel-bound). This shows the method **generalizes** and is not hard-coded for BN.
+*(Note: we first reported "+62%" from "cutting idle". On a closer look, most of that idle is trucks parked overnight — 82% of the idle hours span the small hours, median 18.7 h. So we split idle into on-shift idle and off-shift downtime, and now compute the ceiling on the real fleet availability. The corrected +54% is more honest and matches the best observed day.)*
+
+We also ran the *same code* on a different flow (Middling). It gave a different answer (short cycle, road not important, the queue is the active lever). This shows the method **generalizes** and is not hard-coded for BN.
 
 ## 6. Honest limits
 
@@ -58,6 +60,7 @@ We are careful about what we claim:
 
 - This is a **diagnostic**, not an optimizer. It does not control the trucks.
 - The recoverable numbers are **upper bounds**, from November data only.
+- The 6-hour line that separates on-shift idle from off-shift downtime is a **provisional, BN-tuned** value; it should scale with the cycle length when we generalize.
 - We have **no payload data**, so the unit is loads and truck-hours, not tonnes.
 - Observational data cannot *prove* an improvement. To prove a gain, the mine should run a **before/after pilot**: apply one action, then run the same analysis on the "after" data and measure the change.
 
