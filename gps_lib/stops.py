@@ -22,8 +22,15 @@ def cluster_and_label_stops(stop_df: pd.DataFrame, zones_gdf, eps_m: float = 30.
     `zone_id_hit`, `zone_mat_hit`, `zone_load_hit` to stop_df. Clustered
     pings (stop_cluster != -1) whose cluster matched no zone polygon are
     labeled "unplanned" — stop locations outside any surveyed zone.
+
+    stop_df may already carry zone_id_hit/zone_mat_hit/zone_load_hit from an
+    earlier per-ping zone-hit pass (e.g. zones.assign_zone_hit) — those are
+    dropped here first, since this function recomputes them per *cluster
+    centroid* rather than per ping. Leaving the old columns in place would
+    make the merge below silently suffix both copies (_x/_y), so every
+    non-noise row reads back as NaN and unplanned_idle_share is wrong.
     """
-    df = stop_df.copy()
+    df = stop_df.drop(columns=["zone_id_hit", "zone_mat_hit", "zone_load_hit"], errors="ignore").copy()
     coords = df[["lat", "lng"]].values
     df["stop_cluster"] = clustering.dbscan_cluster_stops(coords, eps_m=eps_m, min_samples=min_samples)
 
