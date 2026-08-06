@@ -1,0 +1,117 @@
+{
+  "zone_id": 25385,
+  "name": "Middling load",
+  "region": "other",
+  "month": "2025-11",
+  "unload_zone": 82093,
+  "haul_km": 0.4,
+  "throughput": {
+    "loads_day": 159.9,
+    "cycles_per_truck_day": 7.61,
+    "trucks": 21,
+    "days": 30,
+    "best_day": 387
+  },
+  "cycle": {
+    "full_cycle_min": 43.8,
+    "svc_load_min": 2.9,
+    "ff_haul_min": 0.3,
+    "ff_return_min": 0.3,
+    "svc_dump_min": 2.6,
+    "queue_cap_min": 120,
+    "park_cap_min": 360
+  },
+  "capacity": {
+    "service_rate_load": 20.7,
+    "op_hours": 23,
+    "shovel_ceiling": 477,
+    "utilisation": 0.34,
+    "dump_rate_p90": 19.8
+  },
+  "attribution": {
+    "recoverable_truck_h": {
+      "load_queue": 1347,
+      "idle_onshift": 1826,
+      "haul_road": 112,
+      "return_road": 94,
+      "dump": 474
+    },
+    "total_truck_h": 3854,
+    "share_pct": {
+      "load_queue": 35,
+      "idle_onshift": 47,
+      "haul_road": 3,
+      "return_road": 2,
+      "dump": 12
+    },
+    "downtime_truck_h": 7099
+  },
+  "decision": {
+    "binding_now": "low fleet utilisation + active-cycle waste (queue / road)",
+    "road_helps": true,
+    "ceiling_active": 299,
+    "ceiling_road": 170,
+    "shovel_ceiling": 477,
+    "downtime_truck_h": 7099
+  },
+  "recommendations": [
+    {
+      "rank": 1,
+      "key": "smooth_queue",
+      "lever": "Smooth arrivals + cut the load queue (dispatch / headway control)",
+      "mechanism": "de-bunch convoys so trucks meet the shovel evenly, cutting the wait at the loader",
+      "anchor": "truck-shovel dispatch & queueing theory (bunching wastes shovel capacity)",
+      "caveat": "within the current fleet availability; no capex.",
+      "recoverable_truck_h": 1347,
+      "throughput_effect": "part of the active-cycle ceiling 160 -> 299 loads/day (+87%)",
+      "prereq": "none",
+      "note": "within current fleet availability; no capex"
+    },
+    {
+      "rank": 2,
+      "key": "road",
+      "lever": "Haul-road improvement (empty return + loaded haul; surface/grade/width at terminals)",
+      "mechanism": "raise haul speed toward free-flow; the delay is concentrated at the two terminals, the open road is already efficient",
+      "anchor": "haul-road rolling / grade resistance vs truck productivity",
+      "caveat": "helps only where the haul is long (BN, not Middling); capped by the shovel ceiling.",
+      "recoverable_truck_h": 206,
+      "throughput_effect": "road-only ~170/day; with the queue -> 299/day",
+      "prereq": "none",
+      "note": "within current fleet availability; capped by shovel ceiling"
+    },
+    {
+      "rank": 3,
+      "key": "staffing",
+      "lever": "Run more productive truck-hours (add/extend shifts, more available trucks)",
+      "mechanism": "the fleet is parked/off-shift a large share of the month; more productive truck-hours raise output toward the shovel ceiling",
+      "anchor": "fleet availability / utilisation (theory of constraints — feed the constraint)",
+      "caveat": "a scheduling & staffing decision, NOT dispatch tuning; some standstill is legitimate (maintenance, rest, blasting).",
+      "recoverable_truck_h": 7099,
+      "throughput_effect": "299 -> up to the shovel ceiling 477/day (staffing/scheduling, not dispatch)",
+      "prereq": "separate operational decision",
+      "note": "~7099 truck-h/mo parked/off-shift; some is legitimate (maintenance/rest)"
+    },
+    {
+      "rank": 4,
+      "key": "shovel",
+      "lever": "Expand loading capacity (2nd loading position / faster load / bigger bucket)",
+      "mechanism": "raise the shovel service rate = raise the throughput ceiling",
+      "anchor": "theory of constraints — elevate the binding constraint",
+      "caveat": "capex; only pays ABOVE the current shovel ceiling.",
+      "recoverable_truck_h": null,
+      "throughput_effect": "raises the ceiling above 477/day",
+      "prereq": "only after throughput reaches the shovel ceiling 477",
+      "note": "capex; last"
+    }
+  ],
+  "caveats": [
+    "Nov-only",
+    "cycle-level free-flow baselines (p15/p20)",
+    "recoverable hours = UPPER BOUND",
+    "idle split at PARK_CAP=6h is a provisional, BN-tuned threshold (make cycle-relative when generalising)",
+    "realistic ceiling assumes current fleet availability + constant service rate",
+    "downtime = fleet off-shift/parked, addressed by staffing not dispatch",
+    "no payload -> units are loads/truck-hours",
+    "DIAGNOSTIC not proof — needs before/after pilot"
+  ]
+}

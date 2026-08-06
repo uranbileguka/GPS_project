@@ -10,7 +10,5 @@ shapely
 rasterio
 jupyter
 
-# agent/gps_fleet_agent.ipynb
-langgraph
-langchain-core
-langchain-openai
+# agent/agent_explain.py (L4 — LLM brief)
+anthropic

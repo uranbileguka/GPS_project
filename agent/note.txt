@@ -1,2 +1,0 @@
-cd /Users/uranbileg/Documents/GPS_project
-/opt/anaconda3/bin/python agent/preprocessing.py
