@@ -6,18 +6,18 @@ into a manager-facing narrative: WHY the zone is slow + WHICH lever, honestly fr
 Grounded strictly in the diagnosis JSON — the model is told to invent nothing.
 
 Usage:
-    python agent_explain.py bn                              # English brief, Nov 2025 (needs ANTHROPIC_API_KEY)
+    python agent_explain.py bn                              # English brief, Nov 2025 (needs OPENAI_API_KEY)
     python agent_explain.py bn --lang zh                     # Chinese brief
     python agent_explain.py bn --start 2025-11-01 --end 2025-11-15   # a specific time frame instead of a whole month
     python agent_explain.py bn --dry-run                     # print the prompt only, no API call
     python agent_explain.py middling                         # same code, different flow -> different diagnosis
 
-Requires: pip install anthropic ; and ANTHROPIC_API_KEY (or `ant auth login`).
+Requires: pip install openai ; and OPENAI_API_KEY in the environment / .env.
 """
 import json, sys, argparse
 from agent_diagnose import diagnose, resolve_zone
 
-MODEL = "claude-opus-4-8"
+MODEL = "gpt-4o"
 
 SYSTEM = """You are a mining haulage operations analyst writing a short briefing for the \
 pit manager of an open-pit coal mine (Baruun Naran circuit, South Gobi, Mongolia). You are \
@@ -54,18 +54,18 @@ def build_prompt(dx, lang="en"):
 
 
 def explain(dx, lang="en", model=MODEL):
-    import anthropic
+    from openai import OpenAI
     system, user = build_prompt(dx, lang)
-    client = anthropic.Anthropic()                       # resolves ANTHROPIC_API_KEY / ant profile
-    with client.messages.stream(
-        model=model, max_tokens=8000,
-        thinking={"type": "adaptive"},
-        output_config={"effort": "medium"},
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    ) as stream:
-        msg = stream.get_final_message()
-    return "".join(b.text for b in msg.content if b.type == "text")
+    client = OpenAI()                                     # resolves OPENAI_API_KEY from the environment
+    resp = client.chat.completions.create(
+        model=model,
+        temperature=0.3,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    )
+    return resp.choices[0].message.content
 
 
 def brief(zone, month=None, start=None, end=None, lang="en", model=MODEL):
@@ -97,6 +97,6 @@ if __name__ == "__main__":
         print(explain(dx, a.lang))
     except Exception as e:
         print(f"[LLM call failed: {type(e).__name__}: {e}]\n"
-              f"Set ANTHROPIC_API_KEY (or run `ant auth login`) and retry, "
+              f"Set OPENAI_API_KEY in the environment or .env and retry, "
               f"or use --dry-run to inspect the prompt.", file=sys.stderr)
         sys.exit(1)

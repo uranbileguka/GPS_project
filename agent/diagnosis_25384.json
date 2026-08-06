@@ -1,0 +1,129 @@
+{
+  "zone_id": 25384,
+  "name": "Reject load",
+  "region": "other",
+  "month": "2025-11",
+  "unload_zone": 25334,
+  "haul_km": 2.0,
+  "throughput": {
+    "loads_day": 219.0,
+    "cycles_per_truck_day": 10.43,
+    "trucks": 21,
+    "days": 30,
+    "best_day": 393
+  },
+  "cycle": {
+    "full_cycle_min": 45.1,
+    "svc_load_min": 4.0,
+    "ff_haul_min": 6.9,
+    "ff_return_min": 4.7,
+    "svc_dump_min": 8.0,
+    "queue_cap_min": 120,
+    "park_cap_min": 360
+  },
+  "capacity": {
+    "service_rate_load": 16.4,
+    "op_hours": 24,
+    "shovel_ceiling": 395,
+    "utilisation": 0.56,
+    "dump_rate_p90": 17.0
+  },
+  "attribution": {
+    "recoverable_truck_h": {
+      "load_queue": 1382,
+      "idle_onshift": 661,
+      "haul_road": 141,
+      "return_road": 163,
+      "dump": 573
+    },
+    "total_truck_h": 2920,
+    "share_pct": {
+      "load_queue": 47,
+      "idle_onshift": 23,
+      "haul_road": 5,
+      "return_road": 6,
+      "dump": 20
+    },
+    "downtime_truck_h": 5299
+  },
+  "decision": {
+    "binding_now": "low fleet utilisation + active-cycle waste (queue / road)",
+    "road_helps": true,
+    "ceiling_active": 331,
+    "ceiling_road": 232,
+    "shovel_ceiling": 395,
+    "downtime_truck_h": 5299
+  },
+  "recommendations": [
+    {
+      "rank": 1,
+      "key": "smooth_queue",
+      "lever": "Smooth arrivals + cut the load queue (dispatch / headway control)",
+      "mechanism": "de-bunch convoys so trucks meet the shovel evenly, cutting the wait at the loader",
+      "anchor": "truck-shovel dispatch & queueing theory (bunching wastes shovel capacity)",
+      "caveat": "within the current fleet availability; no capex.",
+      "recoverable_truck_h": 1382,
+      "throughput_effect": "part of the active-cycle ceiling 219 -> 331 loads/day (+51%)",
+      "prereq": "none",
+      "note": "within current fleet availability; no capex"
+    },
+    {
+      "rank": 2,
+      "key": "dump",
+      "lever": "Dump-side spotting / extra dump position / pile management",
+      "mechanism": "cut dwell at the unload zone (spotting, congestion at the pile)",
+      "anchor": "dump/spotting time in cycle-time studies",
+      "caveat": "only binding where dump excess is large (e.g. Middling), not BN.",
+      "recoverable_truck_h": 573,
+      "throughput_effect": "material — dump excess is large for this flow",
+      "prereq": "none",
+      "note": "dump zone is a real bottleneck here"
+    },
+    {
+      "rank": 3,
+      "key": "road",
+      "lever": "Haul-road improvement (empty return + loaded haul; surface/grade/width at terminals)",
+      "mechanism": "raise haul speed toward free-flow; the delay is concentrated at the two terminals, the open road is already efficient",
+      "anchor": "haul-road rolling / grade resistance vs truck productivity",
+      "caveat": "helps only where the haul is long (BN, not Middling); capped by the shovel ceiling.",
+      "recoverable_truck_h": 304,
+      "throughput_effect": "road-only ~232/day; with the queue -> 331/day",
+      "prereq": "none",
+      "note": "within current fleet availability; capped by shovel ceiling"
+    },
+    {
+      "rank": 4,
+      "key": "staffing",
+      "lever": "Run more productive truck-hours (add/extend shifts, more available trucks)",
+      "mechanism": "the fleet is parked/off-shift a large share of the month; more productive truck-hours raise output toward the shovel ceiling",
+      "anchor": "fleet availability / utilisation (theory of constraints — feed the constraint)",
+      "caveat": "a scheduling & staffing decision, NOT dispatch tuning; some standstill is legitimate (maintenance, rest, blasting).",
+      "recoverable_truck_h": 5299,
+      "throughput_effect": "331 -> up to the shovel ceiling 395/day (staffing/scheduling, not dispatch)",
+      "prereq": "separate operational decision",
+      "note": "~5299 truck-h/mo parked/off-shift; some is legitimate (maintenance/rest)"
+    },
+    {
+      "rank": 5,
+      "key": "shovel",
+      "lever": "Expand loading capacity (2nd loading position / faster load / bigger bucket)",
+      "mechanism": "raise the shovel service rate = raise the throughput ceiling",
+      "anchor": "theory of constraints — elevate the binding constraint",
+      "caveat": "capex; only pays ABOVE the current shovel ceiling.",
+      "recoverable_truck_h": null,
+      "throughput_effect": "raises the ceiling above 395/day",
+      "prereq": "only after throughput reaches the shovel ceiling 395",
+      "note": "capex; last"
+    }
+  ],
+  "caveats": [
+    "Nov-only",
+    "cycle-level free-flow baselines (p15/p20)",
+    "recoverable hours = UPPER BOUND",
+    "idle split at PARK_CAP=6h is a provisional, BN-tuned threshold (make cycle-relative when generalising)",
+    "realistic ceiling assumes current fleet availability + constant service rate",
+    "downtime = fleet off-shift/parked, addressed by staffing not dispatch",
+    "no payload -> units are loads/truck-hours",
+    "DIAGNOSTIC not proof — needs before/after pilot"
+  ]
+}

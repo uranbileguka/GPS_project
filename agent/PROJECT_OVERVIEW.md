@@ -41,7 +41,7 @@ The agent has four layers. Everything before the last layer is interpretable and
 
 3. **Decision.** Method: Theory of Constraints. We measure the shovel service rate from the data (how fast loaded trucks depart when the shovel is busy), compute the throughput ceiling, and compare it with the current throughput. Then we run "what-if" tests: if we remove one bucket's extra time, does the throughput go up, or does it hit the shovel ceiling? This tells us the **binding constraint** and stops naive advice like "just widen the road".
 
-4. **Explanation.** Method: a large language model (Claude). We give it the structured diagnosis (numbers only) and ask it to write a short manager brief. The prompt tells the model to use only the given numbers and to keep the honest limits. The output can be in English or Chinese.
+4. **Explanation.** Method: a large language model (OpenAI GPT-4o). We give it the structured diagnosis (numbers only) and ask it to write a short manager brief. The prompt tells the model to use only the given numbers and to keep the honest limits. The output can be in English or Chinese.
 
 ## 5. Example result — BN load zone
 
@@ -67,7 +67,7 @@ We are careful about what we claim:
 ## 7. Code
 
 - `agent_diagnose.py` — layers 1–3. `diagnose(zone_id)` returns a structured result and writes `diagnosis_<zone>.json`.
-- `agent_explain.py` — layer 4. `explain(...)` calls Claude and writes the manager brief.
+- `agent_explain.py` — layer 4. `explain(...)` calls OpenAI and writes the manager brief.
 - Both are self-contained on `cycles_all_months.csv`.
 
 ## 8. Next steps

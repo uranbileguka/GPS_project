@@ -23,7 +23,7 @@ cycles  →  attribution  →  decision (Theory of Constraints)  →  recommenda
 | File | What it is |
 |---|---|
 | `agent_diagnose.py` | Layers 1–3. `diagnose(zone, month=None, start=None, end=None)` → structured dict; `report()` prints it; writes `diagnosis_<zone>.json`. `zone` is a zone_id or a flow alias (`bn` / `middling` / `reject`, see `ZONE_ALIASES`). Give either `month` (a whole calendar month, e.g. `"2025-11"`) or `start`/`end` ("YYYY-MM-DD") for any date range within the data. |
-| `agent_explain.py` | Layer 4. `explain(diagnosis, lang)` → manager brief via `claude-opus-4-8`. English or Chinese. `brief(zone, month=None, start=None, end=None, lang="en")` does diagnose+explain in one call — the "I say a time frame, what's wrong and what would help" entry point. |
+| `agent_explain.py` | Layer 4. `explain(diagnosis, lang)` → manager brief via OpenAI `gpt-4o`. English or Chinese. `brief(zone, month=None, start=None, end=None, lang="en")` does diagnose+explain in one call — the "I say a time frame, what's wrong and what would help" entry point. |
 | `bn_capacity.py` | Stand-alone, detailed Theory-of-Constraints print-out for BN (the capacity logic is also inside `agent_diagnose.py`). |
 | `agent_demo.ipynb` | Demo notebook with saved outputs: BN diagnosis, attribution chart, capacity chart, BN-vs-Middling comparison, and the example brief. |
 | `bn_capacity_toc.png` | The BN throughput-ceiling figure. |
@@ -31,7 +31,7 @@ cycles  →  attribution  →  decision (Theory of Constraints)  →  recommenda
 
 ## How to run
 
-Requires `pandas`, `numpy`, `matplotlib`, `jupyter` (and `anthropic` for L4 — `pip install -r
+Requires `pandas`, `numpy`, `matplotlib`, `jupyter` (and `openai` for L4 — `pip install -r
 ../requirements.txt`). Data file `cycles_all_months.csv` resolves through `gps_lib.config.DATA_DIR`
 (same `GPS_DATA_DIR` override as every other notebook in this repo — see the root README) — it's
 git-ignored; get it from the shared OneDrive, or rebuild it by running
@@ -45,8 +45,8 @@ python agent_diagnose.py bn --month 2025-07                       # a different 
 python agent_diagnose.py bn --start 2025-11-01 --end 2025-11-15   # a specific time frame instead of a whole month
 python agent_diagnose.py 25384                                    # a raw zone_id also works
 
-# Layer 4: manager brief (needs an Anthropic API key)
-export ANTHROPIC_API_KEY=sk-ant-...
+# Layer 4: manager brief (needs an OpenAI API key)
+export OPENAI_API_KEY=sk-...
 python agent_explain.py bn                                        # English
 python agent_explain.py bn --lang zh                              # Chinese
 python agent_explain.py bn --start 2025-11-01 --end 2025-11-15    # brief for a specific time frame

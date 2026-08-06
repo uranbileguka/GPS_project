@@ -11,4 +11,4 @@ rasterio
 jupyter
 
 # agent/agent_explain.py (L4 — LLM brief)
-anthropic
+openai

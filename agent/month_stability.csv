@@ -1,0 +1,16 @@
+flow,month,loads_day,trucks,days,best_day,shovel_util_pct,top_bucket,top_bucket_h,binding_constraint,ceiling_active,shovel_ceiling,recoverable_gain_pct
+bn,2025-07,48.5,13,31,68,43.0,return_road,972,fleet / schedule,80,114,64.9
+bn,2025-08,78.0,24,31,104,52.0,return_road,1535,fleet / schedule,125,150,60.3
+bn,2025-09,77.6,24,30,106,53.0,return_road,1488,fleet / schedule,125,145,61.1
+bn,2025-10,88.3,26,31,118,59.0,return_road,1669,fleet / schedule,136,150,54.0
+bn,2025-11,80.6,22,30,109,50.0,return_road,1567,fleet / schedule,124,160,53.8
+middling,2025-07,150.7,10,31,341,32.0,idle_onshift,612,fleet / schedule,233,477,54.6
+middling,2025-08,196.7,25,31,413,33.0,idle_onshift,2786,fleet / schedule,404,587,105.4
+middling,2025-09,233.3,27,30,410,44.0,idle_onshift,3115,fleet / schedule,484,532,107.5
+middling,2025-10,204.6,29,31,508,38.0,idle_onshift,4186,fleet / schedule,471,541,130.2
+middling,2025-11,159.9,21,30,387,34.0,idle_onshift,1826,fleet / schedule,299,477,87.0
+reject,2025-07,7.2,9,22,31,8.0,idle_onshift,171,fleet / schedule,13,89,80.6
+reject,2025-08,376.3,24,31,519,68.0,load_queue,2323,fleet / schedule,557,557,48.0
+reject,2025-09,422.1,27,30,573,69.0,load_queue,2105,fleet / schedule,600,608,42.1
+reject,2025-10,497.0,29,31,782,73.0,load_queue,2912,fleet / schedule,680,680,36.8
+reject,2025-11,219.0,21,30,393,56.0,load_queue,1382,fleet / schedule,331,395,51.1
