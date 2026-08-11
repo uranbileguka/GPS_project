@@ -1,0 +1,6 @@
+month,loads_day,rho_shovel,saturated,stations_found,driving_pct,top_lever,margin,tied,shovel_queue_rank,road_return_rank,floor_pct,ceil_pct
+2025-07,48.5,0.43,False,2,56,On-shift idle (better dispatch),0.2,True,3,7,33,80
+2025-08,78.0,0.52,False,2,58,Queue at Баруун наран пүү/Ухаа/ + ,0.9,True,2,8,26,78
+2025-09,77.6,0.53,False,2,57,Queue at the shovel (incl. waiting,3.2,True,1,8,27,68
+2025-10,88.3,0.59,False,2,57,Queue at the shovel (incl. waiting,10.1,False,1,8,26,70
+2025-11,80.6,0.5,False,2,56,Queue at the shovel (incl. waiting,8.0,False,1,8,21,75

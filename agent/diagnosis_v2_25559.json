@@ -1,0 +1,306 @@
+{
+  "zone_id": 25559,
+  "name": "BN load (Баруун наран /Зүүн/)",
+  "region": "bn",
+  "month": "2025-11",
+  "gmm_cut_min": 147.6,
+  "method": "ping layer: six stations, causal service times",
+  "ping_error": null,
+  "throughput": {
+    "loads_day": 80.6,
+    "trucks": 22,
+    "days": 30,
+    "op_hours": 22
+  },
+  "stations": {
+    "shovel_rate": 7.3,
+    "dump_rate": 8.3,
+    "rho_shovel": 0.5,
+    "rho_dump": 0.44,
+    "binding": "shovel",
+    "saturated": false,
+    "ceiling_not_reported": "utilisation moves 0.23-0.67 and the ceiling 125-273 across 175 parameter combinations; only \"not saturated\" survives"
+  },
+  "roadside_stations": {
+    "weigh_BN": {
+      "label": "Weighbridge (BN, pit side)",
+      "total_truck_h": 102,
+      "service_truck_h": 71,
+      "queue_truck_h": 21,
+      "solo_long_truck_h": 11,
+      "service_min": 3.4,
+      "conc_spearman": 0.11,
+      "visits": 3573
+    },
+    "tarp_on": {
+      "label": "Tarping-on point",
+      "total_truck_h": 638,
+      "service_truck_h": 408,
+      "queue_truck_h": 176,
+      "solo_long_truck_h": 54,
+      "service_min": 5.8,
+      "conc_spearman": 0.14,
+      "visits": 4812
+    },
+    "tarp_off": {
+      "label": "Tarping-off point",
+      "total_truck_h": 537,
+      "service_truck_h": 171,
+      "queue_truck_h": 262,
+      "solo_long_truck_h": 105,
+      "service_min": 2.4,
+      "conc_spearman": 0.21,
+      "visits": 5051
+    },
+    "weigh_Ukhaa": {
+      "label": "Weighbridge (Ukhaa, dump side)",
+      "total_truck_h": 453,
+      "service_truck_h": 157,
+      "queue_truck_h": 267,
+      "solo_long_truck_h": 29,
+      "service_min": 4.6,
+      "conc_spearman": 0.22,
+      "visits": 5120
+    }
+  },
+  "leg_decomposition": {
+    "driving_share_pct": 57,
+    "identity_error_pct": -0.8
+  },
+  "lever_verdict": {
+    "margin": 9.9,
+    "tied": "False",
+    "top": [
+      "Queue at the shovel (smooth arrivals)"
+    ],
+    "note": "#1 clears #2 by 9.9 loads/day — a real winner"
+  },
+  "observed": {
+    "normal_days": 26,
+    "stoppage_days": 4,
+    "current_loads_day": 90.1,
+    "best_day": 109,
+    "top10pct_day": 105.0,
+    "gain_pct_best": 21,
+    "gain_pct_top10": 17,
+    "from_more_trucks_pct": 8,
+    "from_trips_per_truck_pct": 10,
+    "stoppage_lost_loads": 285,
+    "stoppage_lost_share_pct": 12,
+    "note": "trips-per-truck is the only half dispatch owns; more-trucks-out is maintenance"
+  },
+  "headline": {
+    "lower_bound_pct": 21,
+    "lower_bound_basis": "every normal day matches this fleet's own best day (it happened)",
+    "dispatch_share_pct": 10,
+    "upper_bound_pct": 82,
+    "upper_bound_basis": "all in-loop waste removed at once (never observed)",
+    "note": "Report the range. The truth is between; observational data cannot locate it. The collaborator paper's +53.8% for BN falls inside this range."
+  },
+  "cycle": {
+    "svc_load_min": 16.217,
+    "ff_haul_min": 60.167,
+    "ff_return_min": 49.623,
+    "svc_dump_min": 3.667,
+    "cut_min": 147.6,
+    "ff_q": 0.15,
+    "svc_q": 0.2,
+    "baseline_ref": "month",
+    "cycle_min": 232.2,
+    "cycling_truck_h_day": 312
+  },
+  "buckets_truck_h": {
+    "queue_shovel": 1538,
+    "dump": 634,
+    "weigh_BN_queue": 21,
+    "weigh_BN_solo_long": 11,
+    "tarp_on_queue": 176,
+    "tarp_on_solo_long": 54,
+    "tarp_off_queue": 262,
+    "tarp_off_solo_long": 105,
+    "weigh_Ukhaa_queue": 267,
+    "weigh_Ukhaa_solo_long": 29,
+    "road_haul": 248,
+    "road_return": 191,
+    "stopped_unmapped": 540
+  },
+  "reservoir_truck_h": {
+    "on_shift_idle": 266,
+    "overnight_parked": 4893,
+    "offloop_stop": 397
+  },
+  "levers": [
+    {
+      "cause": "Queue at the shovel (smooth arrivals)",
+      "key": "queue_shovel",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 1538,
+      "new_loads": 96.4,
+      "gain": 15.8,
+      "rank": 1
+    },
+    {
+      "cause": "Dump spotting / congestion",
+      "key": "dump",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 634,
+      "new_loads": 86.4,
+      "gain": 5.9,
+      "rank": 2
+    },
+    {
+      "cause": "Stopped somewhere unmapped (93 zones lack polygons)",
+      "key": "stopped_unmapped",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 540,
+      "new_loads": 85.5,
+      "gain": 4.9,
+      "rank": 3
+    },
+    {
+      "cause": "Car park / klonk mid-trip — not every trip",
+      "key": "offloop_stop",
+      "mech": "b: add looping hours",
+      "bucket_truck_h": 397,
+      "new_loads": 84.0,
+      "gain": 3.4,
+      "rank": 4
+    },
+    {
+      "cause": "Queue at the Ukhaa weighbridge",
+      "key": "weigh_Ukhaa_queue",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 267,
+      "new_loads": 82.9,
+      "gain": 2.4,
+      "rank": 5
+    },
+    {
+      "cause": "Queue at the tarping-off point",
+      "key": "tarp_off_queue",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 262,
+      "new_loads": 82.9,
+      "gain": 2.3,
+      "rank": 6
+    },
+    {
+      "cause": "On-shift idle (better dispatch)",
+      "key": "on_shift_idle",
+      "mech": "b: add looping hours",
+      "bucket_truck_h": 266,
+      "new_loads": 82.9,
+      "gain": 2.3,
+      "rank": 7
+    },
+    {
+      "cause": "Haul road, loaded — DRIVING time only",
+      "key": "road_haul",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 248,
+      "new_loads": 82.8,
+      "gain": 2.2,
+      "rank": 8
+    },
+    {
+      "cause": "Haul road, empty — DRIVING time only",
+      "key": "road_return",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 191,
+      "new_loads": 82.2,
+      "gain": 1.7,
+      "rank": 9
+    },
+    {
+      "cause": "Queue at the tarping-on point",
+      "key": "tarp_on_queue",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 176,
+      "new_loads": 82.1,
+      "gain": 1.5,
+      "rank": 10
+    },
+    {
+      "cause": "Tarping-off — long dwell, nobody blocking (cause unknown)",
+      "key": "tarp_off_solo_long",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 105,
+      "new_loads": 81.5,
+      "gain": 0.9,
+      "rank": 11
+    },
+    {
+      "cause": "Tarping-on — long dwell, nobody blocking (cause unknown)",
+      "key": "tarp_on_solo_long",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 54,
+      "new_loads": 81.0,
+      "gain": 0.5,
+      "rank": 12
+    },
+    {
+      "cause": "Ukhaa weighbridge — long dwell, nobody blocking (cause unknown)",
+      "key": "weigh_Ukhaa_solo_long",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 29,
+      "new_loads": 80.8,
+      "gain": 0.3,
+      "rank": 13
+    },
+    {
+      "cause": "Queue at the BN weighbridge",
+      "key": "weigh_BN_queue",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 21,
+      "new_loads": 80.7,
+      "gain": 0.2,
+      "rank": 14
+    },
+    {
+      "cause": "BN weighbridge — long dwell, nobody blocking (cause unknown)",
+      "key": "weigh_BN_solo_long",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 11,
+      "new_loads": 80.7,
+      "gain": 0.1,
+      "rank": 15
+    }
+  ],
+  "staffing": {
+    "cause": "Overnight parking -> more shifts",
+    "mech": "b: staffing (separate decision)",
+    "reservoir_truck_h": 4893,
+    "new_loads": 123,
+    "gain": 42,
+    "note": "off-shift downtime; a staffing lever, not dispatch — some is legitimate"
+  },
+  "recoverable_combined": {
+    "new_loads": 147,
+    "gain": 66,
+    "pct": 82,
+    "warning": "THEORETICAL UPPER BOUND — assumes every trip drops to the fast baseline at once, and leans on a ceiling that moves 125..273 under plausible parameters. Never headline this; pair it with `observed`."
+  },
+  "feedback": {
+    "new_flow": 5.59,
+    "rho_shovel_new": 0.77,
+    "rho_dump_new": 0.67,
+    "note": "pushing toward the ceiling, shovel reaches 100% first -> it becomes the next bottleneck"
+  },
+  "headline_gain_band": {
+    "p5": 15,
+    "p50": 16,
+    "p95": 18
+  },
+  "caveats": [
+    "GMM cut (per-zone, data-driven)",
+    "cause = overnight + concurrency + position",
+    "road buckets are DRIVING time only; station/park time is booked separately",
+    "station service = median dwell with nobody else there (causal, not a percentile)",
+    "a station is a place every trip passes (~200% coverage); <100% -> out-of-loop",
+    "infrastructure zones are bounding boxes — only 11 of 104 have real polygons",
+    "grade checked and ruled out: BN net grade is 0.13% over 34 km",
+    "gains = UPPER BOUND; report the headline as a RANGE",
+    "no payload -> loads/truck-hours",
+    "DIAGNOSTIC not proof -> before/after pilot"
+  ]
+}
