@@ -3,297 +3,750 @@
   "name": "BN load (Баруун наран /Зүүн/)",
   "region": "bn",
   "month": "2025-11",
-  "gmm_cut_min": 147.6,
   "method": "ping layer: six stations, causal service times",
   "ping_error": null,
   "throughput": {
-    "loads_day": 80.6,
+    "loads_day": 88.6,
     "trucks": 22,
     "days": 30,
-    "op_hours": 22
+    "op_hours": 21
   },
   "stations": {
-    "shovel_rate": 7.3,
-    "dump_rate": 8.3,
-    "rho_shovel": 0.5,
-    "rho_dump": 0.44,
+    "shovel_rate": 7.6,
+    "dump_rate": 8.9,
+    "rho_shovel": 0.56,
+    "rho_dump": 0.48,
     "binding": "shovel",
     "saturated": false,
     "ceiling_not_reported": "utilisation moves 0.23-0.67 and the ceiling 125-273 across 175 parameter combinations; only \"not saturated\" survives"
   },
   "roadside_stations": {
-    "weigh_BN": {
-      "label": "Weighbridge (BN, pit side)",
-      "total_truck_h": 102,
-      "service_truck_h": 71,
-      "queue_truck_h": 21,
-      "solo_long_truck_h": 11,
-      "service_min": 3.4,
-      "conc_spearman": 0.11,
-      "visits": 3573
-    },
-    "tarp_on": {
-      "label": "Tarping-on point",
-      "total_truck_h": 638,
-      "service_truck_h": 408,
-      "queue_truck_h": 176,
-      "solo_long_truck_h": 54,
-      "service_min": 5.8,
-      "conc_spearman": 0.14,
-      "visits": 4812
-    },
-    "tarp_off": {
-      "label": "Tarping-off point",
-      "total_truck_h": 537,
-      "service_truck_h": 171,
-      "queue_truck_h": 262,
-      "solo_long_truck_h": 105,
-      "service_min": 2.4,
-      "conc_spearman": 0.21,
-      "visits": 5051
-    },
-    "weigh_Ukhaa": {
-      "label": "Weighbridge (Ukhaa, dump side)",
-      "total_truck_h": 453,
-      "service_truck_h": 157,
-      "queue_truck_h": 267,
-      "solo_long_truck_h": 29,
+    "z27840_27839": {
+      "label": "Баруун наран пүү/Ухаа/ + БН-Хучлаг авах цэг",
+      "role": "station",
+      "coverage_pct": 230,
+      "stop_rate": 0.92,
+      "members": [
+        "Баруун наран пүү/Ухаа/",
+        "БН-Хучлаг авах цэг"
+      ],
+      "total_truck_h": 1265,
+      "service_truck_h": 402,
+      "queue_truck_h": 769,
+      "solo_long_truck_h": 94,
       "service_min": 4.6,
       "conc_spearman": 0.22,
-      "visits": 5120
+      "visits": 6067
+    },
+    "z27928_25560_25561": {
+      "label": "Баруун наран ачилтруу оролт + Баруун наран пүү /БН/ + БН-Хучлаг хучих цэг",
+      "role": "station",
+      "coverage_pct": 217,
+      "stop_rate": 0.91,
+      "members": [
+        "Баруун наран ачилтруу оролт",
+        "Баруун наран пүү /БН/",
+        "БН-Хучлаг хучих цэг"
+      ],
+      "total_truck_h": 1093,
+      "service_truck_h": 592,
+      "queue_truck_h": 470,
+      "solo_long_truck_h": 31,
+      "service_min": 8.2,
+      "conc_spearman": 0.24,
+      "visits": 4570
     }
   },
   "leg_decomposition": {
-    "driving_share_pct": 57,
-    "identity_error_pct": -0.8
+    "driving_share_pct": 43,
+    "identity_error_pct": 0.0,
+    "unrecorded_gap_pct": 12.7,
+    "topology": [
+      {
+        "zone_id": 27840,
+        "label": "Баруун наран пүү/Ухаа/",
+        "visits": 6122,
+        "coverage_pct": 230,
+        "stop_rate": 0.92,
+        "kind": "station",
+        "members": 1
+      },
+      {
+        "zone_id": 27839,
+        "label": "БН-Хучлаг авах цэг",
+        "visits": 6057,
+        "coverage_pct": 228,
+        "stop_rate": 0.89,
+        "kind": "station",
+        "members": 1
+      },
+      {
+        "zone_id": 29193,
+        "label": "S30 Овоолго",
+        "visits": 5873,
+        "coverage_pct": 221,
+        "stop_rate": 0.0,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 27928,
+        "label": "Баруун наран ачилтруу оролт",
+        "visits": 5770,
+        "coverage_pct": 217,
+        "stop_rate": 0.91,
+        "kind": "station",
+        "members": 1
+      },
+      {
+        "zone_id": 25561,
+        "label": "БН-Хучлаг хучих цэг",
+        "visits": 5416,
+        "coverage_pct": 204,
+        "stop_rate": 0.97,
+        "kind": "station",
+        "members": 1
+      },
+      {
+        "zone_id": 25560,
+        "label": "Баруун наран пүү /БН/",
+        "visits": 5381,
+        "coverage_pct": 203,
+        "stop_rate": 0.92,
+        "kind": "station",
+        "members": 1
+      },
+      {
+        "zone_id": 28605,
+        "label": "эргэлт 1",
+        "visits": 5395,
+        "coverage_pct": 203,
+        "stop_rate": 0.05,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 28606,
+        "label": "эргэлт2",
+        "visits": 5396,
+        "coverage_pct": 203,
+        "stop_rate": 0.05,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 28867,
+        "label": "цанхи уулзвар",
+        "visits": 5374,
+        "coverage_pct": 202,
+        "stop_rate": 0.0,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 28607,
+        "label": "эргэлт3",
+        "visits": 5379,
+        "coverage_pct": 202,
+        "stop_rate": 0.02,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 28684,
+        "label": "ТЛ замын ачилт",
+        "visits": 5312,
+        "coverage_pct": 200,
+        "stop_rate": 0.2,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 81716,
+        "label": "SP11",
+        "visits": 4823,
+        "coverage_pct": 182,
+        "stop_rate": 0.01,
+        "kind": "waypoint",
+        "members": 1
+      },
+      {
+        "zone_id": 25336,
+        "label": "Sp3",
+        "visits": 2561,
+        "coverage_pct": 96,
+        "stop_rate": 0.91,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 25645,
+        "label": "Баруун наран клонк",
+        "visits": 2555,
+        "coverage_pct": 96,
+        "stop_rate": 0.27,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29037,
+        "label": "baruun hard",
+        "visits": 2405,
+        "coverage_pct": 91,
+        "stop_rate": 0.92,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28777,
+        "label": "hard 3",
+        "visits": 1635,
+        "coverage_pct": 62,
+        "stop_rate": 0.71,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 25418,
+        "label": "Режектийн зам",
+        "visits": 1504,
+        "coverage_pct": 57,
+        "stop_rate": 0.88,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28783,
+        "label": "buulgalt",
+        "visits": 1352,
+        "coverage_pct": 51,
+        "stop_rate": 0.62,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28554,
+        "label": "БН шинэ паркын талбай",
+        "visits": 1074,
+        "coverage_pct": 40,
+        "stop_rate": 0.61,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82318,
+        "label": "Rob shalgah",
+        "visits": 820,
+        "coverage_pct": 31,
+        "stop_rate": 0.83,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29054,
+        "label": "TL ЗАМ ХАЯГДАЛ",
+        "visits": 778,
+        "coverage_pct": 29,
+        "stop_rate": 0.38,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28200,
+        "label": "Terminal Middling овоолго",
+        "visits": 647,
+        "coverage_pct": 24,
+        "stop_rate": 0.22,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29209,
+        "label": "ПАРКЫН ТАЛБАЙ",
+        "visits": 495,
+        "coverage_pct": 19,
+        "stop_rate": 0.34,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 81702,
+        "label": "Hard sp5",
+        "visits": 484,
+        "coverage_pct": 18,
+        "stop_rate": 0.02,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 25642,
+        "label": "ER клонк",
+        "visits": 478,
+        "coverage_pct": 18,
+        "stop_rate": 0.13,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29530,
+        "label": "түр хард",
+        "visits": 478,
+        "coverage_pct": 18,
+        "stop_rate": 0.02,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82048,
+        "label": "staker shine",
+        "visits": 481,
+        "coverage_pct": 18,
+        "stop_rate": 0.02,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82324,
+        "label": "мидлинг буулгалт",
+        "visits": 477,
+        "coverage_pct": 18,
+        "stop_rate": 0.02,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29222,
+        "label": "hard achilt1",
+        "visits": 307,
+        "coverage_pct": 12,
+        "stop_rate": 0.53,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28614,
+        "label": "Засварын паркын талбай",
+        "visits": 295,
+        "coverage_pct": 11,
+        "stop_rate": 1.0,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28613,
+        "label": "Засварын шоп",
+        "visits": 290,
+        "coverage_pct": 11,
+        "stop_rate": 1.0,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 25384,
+        "label": "Reject ачилтын бүс",
+        "visits": 249,
+        "coverage_pct": 9,
+        "stop_rate": 0.8,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82214,
+        "label": "10.01 buulgalt",
+        "visits": 201,
+        "coverage_pct": 8,
+        "stop_rate": 0.3,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 26242,
+        "label": "Түлш цэнэглэх цэг",
+        "visits": 189,
+        "coverage_pct": 7,
+        "stop_rate": 0.43,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28835,
+        "label": "Ус авах цэг",
+        "visits": 168,
+        "coverage_pct": 6,
+        "stop_rate": 0.25,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 81908,
+        "label": "ста түр",
+        "visits": 168,
+        "coverage_pct": 6,
+        "stop_rate": 0.08,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 27566,
+        "label": "2-р км",
+        "visits": 166,
+        "coverage_pct": 6,
+        "stop_rate": 0.92,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82213,
+        "label": "10,01 achilt",
+        "visits": 166,
+        "coverage_pct": 6,
+        "stop_rate": 0.28,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82040,
+        "label": "Мааш 7 түр",
+        "visits": 40,
+        "coverage_pct": 2,
+        "stop_rate": 0.12,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 28370,
+        "label": "Sp2",
+        "visits": 43,
+        "coverage_pct": 2,
+        "stop_rate": 0.37,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82210,
+        "label": "хард ачилт99",
+        "visits": 40,
+        "coverage_pct": 2,
+        "stop_rate": 0.12,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82149,
+        "label": "үүссэн стакер SP2",
+        "visits": 30,
+        "coverage_pct": 1,
+        "stop_rate": 0.47,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 81969,
+        "label": "Hard buulgalt",
+        "visits": 30,
+        "coverage_pct": 1,
+        "stop_rate": 0.37,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82143,
+        "label": "Шинэ бүс",
+        "visits": 31,
+        "coverage_pct": 1,
+        "stop_rate": 0.23,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29055,
+        "label": "TL ZAM HAYGDAL ACHILT",
+        "visits": 34,
+        "coverage_pct": 1,
+        "stop_rate": 0.18,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 81970,
+        "label": "Hard achilt1111",
+        "visits": 34,
+        "coverage_pct": 1,
+        "stop_rate": 0.0,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 29012,
+        "label": "tulgalt hiih",
+        "visits": 30,
+        "coverage_pct": 1,
+        "stop_rate": 0.37,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 82126,
+        "label": "staker ovoolgo",
+        "visits": 34,
+        "coverage_pct": 1,
+        "stop_rate": 0.35,
+        "kind": "offloop",
+        "members": 1
+      },
+      {
+        "zone_id": 81961,
+        "label": "Шинэ термал буулгалт",
+        "visits": 39,
+        "coverage_pct": 1,
+        "stop_rate": 0.18,
+        "kind": "offloop",
+        "members": 1
+      }
+    ],
+    "offloop_places": [
+      "Sp3",
+      "Баруун наран клонк",
+      "baruun hard",
+      "hard 3",
+      "Режектийн зам",
+      "buulgalt",
+      "БН шинэ паркын талбай",
+      "Rob shalgah",
+      "TL ЗАМ ХАЯГДАЛ",
+      "Terminal Middling овоолго",
+      "ПАРКЫН ТАЛБАЙ",
+      "Hard sp5",
+      "ER клонк",
+      "түр хард",
+      "staker shine",
+      "мидлинг буулгалт",
+      "hard achilt1",
+      "Засварын паркын талбай",
+      "Засварын шоп",
+      "Reject ачилтын бүс",
+      "10.01 buulgalt",
+      "Түлш цэнэглэх цэг",
+      "Ус авах цэг",
+      "ста түр",
+      "2-р км",
+      "10,01 achilt",
+      "Мааш 7 түр",
+      "Sp2",
+      "хард ачилт99",
+      "үүссэн стакер SP2",
+      "Hard buulgalt",
+      "Шинэ бүс",
+      "TL ZAM HAYGDAL ACHILT",
+      "Hard achilt1111",
+      "tulgalt hiih",
+      "staker ovoolgo",
+      "Шинэ термал буулгалт"
+    ]
   },
   "lever_verdict": {
-    "margin": 9.9,
-    "tied": "False",
+    "margin": 0.0,
+    "tied": "True",
     "top": [
-      "Queue at the shovel (smooth arrivals)"
+      "Queue at Баруун наран пүү/Ухаа/ + БН-Хучлаг авах цэг",
+      "Stopped somewhere unmapped (only 11 of 104 zones have polygons)"
     ],
-    "note": "#1 clears #2 by 9.9 loads/day — a real winner"
+    "note": "#1 and #2 are within the parameter wobble — report them as tied"
   },
   "observed": {
     "normal_days": 26,
     "stoppage_days": 4,
-    "current_loads_day": 90.1,
-    "best_day": 109,
-    "top10pct_day": 105.0,
+    "current_loads_day": 98.8,
+    "best_day": 120,
+    "top10pct_day": 114.5,
     "gain_pct_best": 21,
-    "gain_pct_top10": 17,
-    "from_more_trucks_pct": 8,
-    "from_trips_per_truck_pct": 10,
-    "stoppage_lost_loads": 285,
+    "gain_pct_top10": 16,
+    "from_more_trucks_pct": 6,
+    "from_trips_per_truck_pct": 13,
+    "stoppage_lost_loads": 308,
     "stoppage_lost_share_pct": 12,
     "note": "trips-per-truck is the only half dispatch owns; more-trucks-out is maintenance"
   },
   "headline": {
     "lower_bound_pct": 21,
     "lower_bound_basis": "every normal day matches this fleet's own best day (it happened)",
-    "dispatch_share_pct": 10,
-    "upper_bound_pct": 82,
+    "dispatch_share_pct": 13,
+    "upper_bound_pct": 38,
     "upper_bound_basis": "all in-loop waste removed at once (never observed)",
     "note": "Report the range. The truth is between; observational data cannot locate it. The collaborator paper's +53.8% for BN falls inside this range."
   },
   "cycle": {
-    "svc_load_min": 16.217,
-    "ff_haul_min": 60.167,
-    "ff_return_min": 49.623,
-    "svc_dump_min": 3.667,
-    "cut_min": 147.6,
+    "svc_load_min": 13.35,
+    "ff_haul_min": 60.48,
+    "ff_return_min": 58.083,
+    "svc_dump_min": 0.667,
+    "cut_min": null,
     "ff_q": 0.15,
     "svc_q": 0.2,
     "baseline_ref": "month",
-    "cycle_min": 232.2,
-    "cycling_truck_h_day": 312
+    "cycle_min": 282.4,
+    "cycling_truck_h_day": 417
   },
   "buckets_truck_h": {
-    "queue_shovel": 1538,
-    "dump": 634,
-    "weigh_BN_queue": 21,
-    "weigh_BN_solo_long": 11,
-    "tarp_on_queue": 176,
-    "tarp_on_solo_long": 54,
-    "tarp_off_queue": 262,
-    "tarp_off_solo_long": 105,
-    "weigh_Ukhaa_queue": 267,
-    "weigh_Ukhaa_solo_long": 29,
-    "road_haul": 248,
-    "road_return": 191,
-    "stopped_unmapped": 540
+    "queue_shovel": 493,
+    "load_solo": 22,
+    "dump": 209,
+    "z27840_27839_queue": 769,
+    "z27840_27839_solo_long": 94,
+    "z27928_25560_25561_queue": 470,
+    "z27928_25560_25561_solo_long": 31,
+    "road_haul": 272,
+    "road_return": 338,
+    "stopped_unmapped": 770
   },
   "reservoir_truck_h": {
-    "on_shift_idle": 266,
-    "overnight_parked": 4893,
-    "offloop_stop": 397
+    "offloop_stop": 2488,
+    "unrecorded_gap": 1426
   },
   "levers": [
     {
-      "cause": "Queue at the shovel (smooth arrivals)",
-      "key": "queue_shovel",
+      "cause": "Queue at Баруун наран пүү/Ухаа/ + БН-Хучлаг авах цэг",
+      "key": "z27840_27839_queue",
       "mech": "a: shorten the loop",
-      "bucket_truck_h": 1538,
-      "new_loads": 96.4,
-      "gain": 15.8,
+      "bucket_truck_h": 769,
+      "new_loads": 94.4,
+      "gain": 5.8,
+      "unattributed": false,
       "rank": 1
     },
     {
-      "cause": "Dump spotting / congestion",
-      "key": "dump",
+      "cause": "Stopped somewhere unmapped (only 11 of 104 zones have polygons)",
+      "key": "stopped_unmapped",
       "mech": "a: shorten the loop",
-      "bucket_truck_h": 634,
-      "new_loads": 86.4,
-      "gain": 5.9,
+      "bucket_truck_h": 770,
+      "new_loads": 94.4,
+      "gain": 5.8,
+      "unattributed": true,
       "rank": 2
     },
     {
-      "cause": "Stopped somewhere unmapped (93 zones lack polygons)",
-      "key": "stopped_unmapped",
+      "cause": "Queue at the shovel (another truck was already loading)",
+      "key": "queue_shovel",
       "mech": "a: shorten the loop",
-      "bucket_truck_h": 540,
-      "new_loads": 85.5,
-      "gain": 4.9,
+      "bucket_truck_h": 493,
+      "new_loads": 92.2,
+      "gain": 3.6,
+      "unattributed": false,
       "rank": 3
     },
     {
-      "cause": "Car park / klonk mid-trip — not every trip",
-      "key": "offloop_stop",
-      "mech": "b: add looping hours",
-      "bucket_truck_h": 397,
-      "new_loads": 84.0,
-      "gain": 3.4,
+      "cause": "Queue at Баруун наран ачилтруу оролт + Баруун наран пүү /БН/ + БН-Хучлаг хучих цэг",
+      "key": "z27928_25560_25561_queue",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 470,
+      "new_loads": 92.0,
+      "gain": 3.5,
+      "unattributed": false,
       "rank": 4
-    },
-    {
-      "cause": "Queue at the Ukhaa weighbridge",
-      "key": "weigh_Ukhaa_queue",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 267,
-      "new_loads": 82.9,
-      "gain": 2.4,
-      "rank": 5
-    },
-    {
-      "cause": "Queue at the tarping-off point",
-      "key": "tarp_off_queue",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 262,
-      "new_loads": 82.9,
-      "gain": 2.3,
-      "rank": 6
-    },
-    {
-      "cause": "On-shift idle (better dispatch)",
-      "key": "on_shift_idle",
-      "mech": "b: add looping hours",
-      "bucket_truck_h": 266,
-      "new_loads": 82.9,
-      "gain": 2.3,
-      "rank": 7
-    },
-    {
-      "cause": "Haul road, loaded — DRIVING time only",
-      "key": "road_haul",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 248,
-      "new_loads": 82.8,
-      "gain": 2.2,
-      "rank": 8
     },
     {
       "cause": "Haul road, empty — DRIVING time only",
       "key": "road_return",
       "mech": "a: shorten the loop",
-      "bucket_truck_h": 191,
-      "new_loads": 82.2,
-      "gain": 1.7,
+      "bucket_truck_h": 338,
+      "new_loads": 91.0,
+      "gain": 2.5,
+      "unattributed": false,
+      "rank": 5
+    },
+    {
+      "cause": "Haul road, loaded — DRIVING time only",
+      "key": "road_haul",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 272,
+      "new_loads": 90.5,
+      "gain": 2.0,
+      "unattributed": false,
+      "rank": 6
+    },
+    {
+      "cause": "Dump spotting / congestion",
+      "key": "dump",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 209,
+      "new_loads": 90.1,
+      "gain": 1.5,
+      "unattributed": false,
+      "rank": 7
+    },
+    {
+      "cause": "Баруун наран пүү/Ухаа/ + БН-Хучлаг авах цэг — long dwell, nobody blocking (cause unknown)",
+      "key": "z27840_27839_solo_long",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 94,
+      "new_loads": 89.2,
+      "gain": 0.7,
+      "unattributed": false,
+      "rank": 8
+    },
+    {
+      "cause": "Slow at the shovel with nobody else there (cause unknown)",
+      "key": "load_solo",
+      "mech": "a: shorten the loop",
+      "bucket_truck_h": 22,
+      "new_loads": 88.7,
+      "gain": 0.2,
+      "unattributed": false,
       "rank": 9
     },
     {
-      "cause": "Queue at the tarping-on point",
-      "key": "tarp_on_queue",
+      "cause": "Баруун наран ачилтруу оролт + Баруун наран пүү /БН/ + БН-Хучлаг хучих цэг — long dwell, nobody blocking (cause unknown)",
+      "key": "z27928_25560_25561_solo_long",
       "mech": "a: shorten the loop",
-      "bucket_truck_h": 176,
-      "new_loads": 82.1,
-      "gain": 1.5,
-      "rank": 10
-    },
-    {
-      "cause": "Tarping-off — long dwell, nobody blocking (cause unknown)",
-      "key": "tarp_off_solo_long",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 105,
-      "new_loads": 81.5,
-      "gain": 0.9,
-      "rank": 11
-    },
-    {
-      "cause": "Tarping-on — long dwell, nobody blocking (cause unknown)",
-      "key": "tarp_on_solo_long",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 54,
-      "new_loads": 81.0,
-      "gain": 0.5,
-      "rank": 12
-    },
-    {
-      "cause": "Ukhaa weighbridge — long dwell, nobody blocking (cause unknown)",
-      "key": "weigh_Ukhaa_solo_long",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 29,
-      "new_loads": 80.8,
-      "gain": 0.3,
-      "rank": 13
-    },
-    {
-      "cause": "Queue at the BN weighbridge",
-      "key": "weigh_BN_queue",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 21,
-      "new_loads": 80.7,
+      "bucket_truck_h": 31,
+      "new_loads": 88.8,
       "gain": 0.2,
-      "rank": 14
-    },
-    {
-      "cause": "BN weighbridge — long dwell, nobody blocking (cause unknown)",
-      "key": "weigh_BN_solo_long",
-      "mech": "a: shorten the loop",
-      "bucket_truck_h": 11,
-      "new_loads": 80.7,
-      "gain": 0.1,
-      "rank": 15
+      "unattributed": false,
+      "rank": 10
     }
   ],
-  "staffing": {
-    "cause": "Overnight parking -> more shifts",
-    "mech": "b: staffing (separate decision)",
-    "reservoir_truck_h": 4893,
-    "new_loads": 123,
-    "gain": 42,
-    "note": "off-shift downtime; a staffing lever, not dispatch — some is legitimate"
-  },
+  "staffing": [
+    {
+      "cause": "Stopped off the loop (car park, yard) -> roster / logistics",
+      "key": "offloop_stop",
+      "mech": "b: roster / logistics (NOT dispatch)",
+      "reservoir_truck_h": 2488,
+      "new_loads": 106,
+      "gain": 18,
+      "note": "off-loop time a dispatcher cannot recover; some of it is legitimate"
+    },
+    {
+      "cause": "Phase time the GPS did not record -> data quality, not a lever",
+      "key": "unrecorded_gap",
+      "mech": "b: roster / logistics (NOT dispatch)",
+      "reservoir_truck_h": 1426,
+      "new_loads": 99,
+      "gain": 10,
+      "note": "off-loop time a dispatcher cannot recover; some of it is legitimate"
+    }
+  ],
   "recoverable_combined": {
-    "new_loads": 147,
-    "gain": 66,
-    "pct": 82,
+    "new_loads": 123,
+    "gain": 34,
+    "pct": 38,
     "warning": "THEORETICAL UPPER BOUND — assumes every trip drops to the fast baseline at once, and leans on a ceiling that moves 125..273 under plausible parameters. Never headline this; pair it with `observed`."
   },
   "feedback": {
-    "new_flow": 5.59,
-    "rho_shovel_new": 0.77,
-    "rho_dump_new": 0.67,
+    "new_flow": 5.05,
+    "rho_shovel_new": 0.67,
+    "rho_dump_new": 0.57,
     "note": "pushing toward the ceiling, shovel reaches 100% first -> it becomes the next bottleneck"
   },
   "headline_gain_band": {
-    "p5": 15,
-    "p50": 16,
-    "p95": 18
+    "p5": 55,
+    "p50": 62,
+    "p95": 69
   },
   "caveats": [
-    "GMM cut (per-zone, data-driven)",
-    "cause = overnight + concurrency + position",
+    "every load->dump->load trip is kept; a data gap is recorded, not a duration cap",
+    "a load-zone visit needs a real stop, so a drive-through cannot close a cycle",
+    "load-zone stay measured from that visit itself, not from the next row",
+    "service = median stay with nobody else there; queue = the excess with someone ahead",
     "road buckets are DRIVING time only; station/park time is booked separately",
     "station service = median dwell with nobody else there (causal, not a percentile)",
     "a station is a place every trip passes (~200% coverage); <100% -> out-of-loop",

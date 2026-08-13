@@ -31,9 +31,14 @@ The mine has drawn zones on the map — where trucks load, where they dump.
 So we check every GPS point: is it inside a zone, or not?
 Then we look at the sequence. A truck sits in the load zone. Then it moves. Then it sits in the dump zone. Then it comes back.
 That is one trip. We call it a cycle.
-For this one load zone in November, that gives 2 417 trips, from 22 trucks, over 30 days.
+Two rules there matter more than they look. A truck only counts as having arrived at the load zone if it actually stopped — 41 percent of the times a truck is inside that zone it is there for under a minute, driving past the corner of it, and if you count those you close trips that never happened. And we never throw a trip away for taking too long. A trip that takes eleven hours is either a truck that stood somewhere, or a tracker that was off, and the duration cannot tell you which — so we keep it and record the longest gap in its GPS instead.
+For this one load zone in November, that gives 2 657 trips, from 22 trucks, over 30 days.
 
-**中.** GPS 大约每 12 秒给一个位置，几百万个点。**第一件事是把它变成"一趟一趟的车"。** 矿方在地图上画了区域——哪里装车、哪里卸车。所以我们对每个点位问：它在不在某个区域里？然后看顺序：一台车待在装车区，然后移动，然后待在卸点，然后回来。**这就是一趟。** 这一个装车区，十一月，得到 **2417 趟，22 台车，30 天**。
+**中.** GPS 大约每 12 秒给一个位置，几百万个点。**第一件事是把它变成"一趟一趟的车"。** 矿方在地图上画了区域——哪里装车、哪里卸车。所以我们对每个点位问：它在不在某个区域里？然后看顺序：一台车待在装车区，然后移动，然后待在卸点，然后回来。**这就是一趟。**
+
+这里有两条规则比看上去重要。**车必须真的停下来**才算到达装车区——**车在装车区里的时候，有 41% 的次数待不满一分钟**，那是从边角开过去，把它们算进来就会"结束"一趟根本不存在的行程。另外，**我们从不因为一趟跑得久就把它扔掉**：一趟跑十一小时，可能是车在哪儿停了很久，也可能是设备关了，**时长本身分不出来**——所以我们保留它，另外记下这趟 GPS 的最大空洞。
+
+这一个装车区，十一月，得到 **2657 趟，22 台车，30 天**。
 
 ---
 
@@ -45,10 +50,10 @@ The truck leaves the load zone. That starts the loaded haul.
 It arrives at the dump. That is the dump phase.
 It leaves the dump. That is the empty return.
 It arrives back at the load zone. And then it sits there until it leaves again — that is the dwell.
-On average at this mine: haul 75 minutes, dump 19, return 88, and dwell 50.
+Median at this mine: haul 72 minutes, dump 2, return 94, and the stay at the load zone 21.
 The dwell is important. It covers the loading itself, plus any time the truck spends waiting to be loaded.
 
-**中.** 每趟分四段，而且每个边界的时刻我们都有。车离开装车区——重载去程开始。到达卸点——卸车段。离开卸点——空车回程。回到装车区——然后待在那儿直到再次出发，这段叫**停留**。这个矿的均值：去程 75 分钟、卸车 19、回程 88、停留 50。**停留这一段很重要，它包含装车本身，也包含等着被装的时间。**
+**中.** 每趟分四段，而且每个边界的时刻我们都有。车离开装车区——重载去程开始。到达卸点——卸车段。离开卸点——空车回程。回到装车区——然后待在那儿直到再次出发，这段叫**停留**。这个矿的中位：去程 72 分钟、卸车 2、回程 94、装车停留 21。**停留这一段很重要，它包含装车本身，也包含等着被装的时间。**
 
 ---
 
@@ -56,28 +61,27 @@ The dwell is important. It covers the loading itself, plus any time the truck sp
 
 **EN.**
 Now here is the thing that took us a while to notice.
-Look at that return phase: 88 minutes on average. It is tempting to say the road is slow.
-But that 88 minutes is just two timestamps subtracted. When the truck left the dump, and when it got back.
+Look at that return phase: 94 minutes. It is tempting to say the road is slow.
+But that 94 minutes is just two timestamps subtracted. When the truck left the dump, and when it got back.
 It tells you nothing about what happened in between.
-Let me show you one real trip. Truck 34065, on the third of November.
-It left the dump at 17:17 and got back at 20:28. So 191 minutes.
-But when we look at the GPS second by second: it drove for 12 minutes.
-Then it sat at a car park for 105 minutes.
-Then it drove for 47 minutes.
-Then it sat at the gate into the pit for 26 minutes.
-Then it drove the last 2 minutes.
-So: 61 minutes of driving. 130 minutes of standing still.
-And that 105-minute stop is not an accident. It is the six o'clock shift change.
-Across the whole month, only 56 percent of that so-called road time is a truck actually driving.
-So before we can say anything about delay, we have to find out where that other 44 percent goes.
+Let me show you one real trip. Truck 51036, on the sixth of November.
+It left the dump at 04:05 and got back at 08:44. So 279 minutes.
+But when we look at the GPS second by second: it sat on the stockpile for 11 minutes.
+Then it drove for 12.
+Then it sat at a car park for 164 minutes.
+Then it drove for 34.
+Then it sat at the gate into the pit for 24, and at a tarping point for 8.
+So: 46 minutes of driving. 233 minutes of standing still.
+Across the whole month, only 43 percent of that so-called road time is a truck actually driving.
+So before we can say anything about delay, we have to find out where the rest goes.
 
-**中.** 有一件事我们花了一阵才注意到。看那个回程：平均 88 分钟，很容易就说"路慢"。**但这 88 分钟只是两个时间戳相减**——车什么时候离开卸点、什么时候回来。**它完全不告诉你中间发生了什么。**
+**中.** 有一件事我们花了一阵才注意到。看那个回程：94 分钟，很容易就说"路慢"。**但这 94 分钟只是两个时间戳相减**——车什么时候离开卸点、什么时候回来。**它完全不告诉你中间发生了什么。**
 
-举一趟真的。34065 号车，11 月 3 日。17:17 离开卸点，20:28 回来，191 分钟。但把 GPS 一秒一秒看下去：开了 12 分钟，**在停车场坐了 105 分钟**，又开 47 分钟，**在采场门口停了 26 分钟**，最后开 2 分钟。
+举一趟真的。51036 号车，11 月 6 日。04:05 离开卸点，08:44 回来，279 分钟。但把 GPS 一秒一秒看下去：**在料堆上停了 11 分钟**，开 12 分钟，**在停车场坐了 164 分钟**，又开 34 分钟，**在采场门口停 24 分钟**，**在盖篷布点停 8 分钟**。
 
-**开车 61 分钟，停着 130 分钟。** 而那 105 分钟的停留不是意外——**那是傍晚六点的换班**。
+**开车 46 分钟，停着 233 分钟。**
 
-整月看，所谓"路上时间"里只有 **56%** 是卡车真在开车。**所以在谈延误之前，得先搞清楚剩下的 44% 去了哪。**
+整月看，所谓"路上时间"里只有 **43%** 是卡车真在开车。**所以在谈延误之前，得先搞清楚剩下的去了哪。**
 
 ---
 
@@ -96,7 +100,7 @@ We check whether the speed drops to almost zero.
 Those two questions sort the 104 places into three groups.
 Some are passed every trip, and trucks stop — five of them. Two weighbridges, two tarping points, and the gate into the pit.
 Some are passed every trip, but nobody stops — junctions and turns. Those are just points on the road.
-And some are not on every trip at all. The car park is the big one. Only 16 percent of trips go there. But when they do, they sit for 40 minutes.
+And some are not on every trip at all. The car park is visited on 40 percent of trips, for about 11 minutes. The repair yard on 11 percent — but for a median of 100 minutes when it happens.
 That last group has to be taken out of the loop entirely, and I will explain why on the next point.
 
 **中.** 矿方在地图上画了 **104 个区域**，不只是装车区和卸点——还有过磅站、停车场、路口等等。**但我们不知道它们是干什么用的**：问不到现场，名字又是蒙文。
@@ -107,7 +111,7 @@ That last group has to be taken out of the loop entirely, and I will explain why
 
 **第二：车是真停下来了，还是只是开过去？** 看速度有没有降到接近零。
 
-这两个问题把 104 个地方分成三组：**每趟都过、而且车会停**——五个：两个过磅站、两个盖篷布点、进采场的门口。**每趟都过、但没人停**——路口、转弯，那就是路上的点而已。**还有一些根本不是每趟都去**——停车场是最大的一个，只有 16% 的趟数会去，但一去就坐 40 分钟。**最后这一组必须整个移出循环**，下一节说为什么。
+这两个问题把 104 个地方分成三组：**每趟都过、而且车会停**——五个：两个过磅站、两个盖篷布点、进采场的门口。**每趟都过、但没人停**——路口、转弯，那就是路上的点而已。**还有一些根本不是每趟都去**——停车场 40% 的趟会去、每次约 11 分钟；维修厂只有 11% 的趟会去，**但一去中位就是 100 分钟**。**最后这一组必须整个移出循环**，下一节说为什么。
 
 ---
 
@@ -119,12 +123,11 @@ We never compare against a manufacturer's number, or a target somebody set.
 We compare each truck against what this same fleet does when nothing is in the way.
 For driving on the road: we take the fastest 15 percent of trips, and use that as the free-flow time.
 But — and this is the point of the last section — we only count time when the truck was actually moving. Not the parked time.
-For loading: we take the fastest 20 percent of the load-zone dwells. That is what loading takes with no queue. About 16 minutes here.
-For a weighbridge or a tarping point: we do something better than a percentile.
-We look at all the visits where no other truck was there. The median of those is the service time. That is measured directly, not chosen.
+For loading, and for a weighbridge or a tarping point, we do something better than a percentile.
+We look at all the visits where no other truck was there, and take the median. That is the service time — measured directly, not chosen. At the load zone it is 13 minutes.
 Now back to the car park.
 The reference for the road comes from the fastest trips. And the fastest trips do not stop at the car park.
-So if we leave the car park inside the road, that whole 40-minute shift change gets counted as road delay.
+So if we leave them inside the road, a 100-minute stop at the repair yard gets counted as road delay.
 And the recommendation would come out as "fix the road" — when what actually happened is a shift change.
 That is why anything that is not on every trip has to come out.
 
@@ -132,11 +135,9 @@ That is why anything that is not on every trip has to come out.
 
 **路上行驶**：取最快的 15% 的趟数，当作自由流时间。**但是**——这就是上一节的意义——**我们只算车真的在动的那部分时间，不算停着的**。
 
-**装车**：取最快的 20% 的停留，那就是"没有排队时装车要多久"，这里大约 16 分钟。
+**装车、过磅站、盖篷布点**：这里我们用了比分位数更好的办法。**看所有"没有别的车在场"的访问，取中位时长，那就是服务时间。** 这是直接量出来的，不是挑的。装车区是 **13 分钟**。
 
-**过磅站或盖篷布点**：这里我们用了比分位数更好的办法。**看所有"没有别的车在场"的访问，取它们的中位时长，那就是服务时间。** 这是直接量出来的，不是挑的。
-
-再回到停车场。**路的参照来自最快的那批趟，而最快的那批趟不会去停车场。** 所以如果把停车场留在"路"里面，**那整整 40 分钟的换班会被算成路上延误**，建议就会变成"去修路"——而实际发生的是换班。**这就是为什么不是每趟都有的东西必须拿出去。**
+再回到停车场。**路的参照来自最快的那批趟，而最快的那批趟不会去停车场。** 所以如果把它们留在"路"里面，**在维修厂停的那 100 分钟会被算成路上延误**，建议就会变成"去修路"——而实际是车在等修。**这就是为什么不是每趟都有的东西必须拿出去。**
 
 ---
 
@@ -146,26 +147,29 @@ That is why anything that is not on every trip has to come out.
 At the load zone, the dwell mixes several different things, and we want to separate them.
 The obvious way would be by duration — long waits are queues, short waits are loading.
 But that does not work. Let me show you two real cases.
-One truck sat at the load zone for 20 minutes. Another sat for 46.
+One truck sat at the load zone for 13 minutes. Another sat for 32.
 By duration you would call the second one a queue.
 But here is what actually matters. When the first truck arrived, there was nobody else there.
-So those 20 minutes are simply how long loading took that time. That is not a delay.
+So those 13 minutes are simply how long loading took. That is not a delay.
 When the second truck arrived, there were already four trucks in front of it.
-That is a queue. Those 46 minutes include real waiting.
+That is a queue. Those 32 minutes include real waiting.
 So the test we use is not how long the truck waited. It is how many trucks were already there when it arrived.
 Same for the weighbridges and the tarping points. If nobody else was there, it is service time. If someone was, the extra is a queue.
 And we can check this. If it really is a queue, then more trucks present should mean longer waits.
-It does. With nobody there, the median stop is under 3 minutes. With four trucks there, it is over 6.
+It does, cleanly. With nobody there the median stay is 13 minutes. One truck ahead, 16. Two, 20. Three, 26. Four, 32. Five or more, 40.
+That is about as clean a dose-response as you get from observational data, and it is the strongest single piece of evidence in the whole analysis.
 
 **中.** 装车区的停留混着好几种东西，我们想把它们分开。**最直觉的办法是按时长分**——等得久就是排队，等得短就是装车。**但这行不通。** 看两个真实的例子。
 
-一台车在装车区待了 **20 分钟**，另一台待了 **46 分钟**。按时长判，你会说第二个是排队。
+一台车在装车区待了 **13 分钟**，另一台待了 **32 分钟**。按时长判，你会说第二个是排队。
 
-**但真正起作用的是这个：第一台车到的时候，周围一台车都没有。** 所以那 20 分钟就是这次装车花了这么久，**不是延误**。**第二台车到的时候，前面已经排着四台。** 那是排队，那 46 分钟里含着真实的等待。
+**但真正起作用的是这个：第一台车到的时候，周围一台车都没有。** 所以那 13 分钟就是这次装车花了这么久，**不是延误**。**第二台车到的时候，前面已经排着四台。** 那是排队，那 32 分钟里含着真实的等待。
 
-**所以我们的判据不是等了多久，是到达那一刻前面有几台车。** 过磅站和盖篷布点同理：没有别的车在场就是服务时间，有车在场时多出来的就是排队。
+**所以我们的判据不是等了多久，是到达那一刻前面有几台车。** 过磅站和盖篷布点同理。
 
-**而且这可以验证。** 如果真是排队，那在场的车越多，等得应该越久。**确实如此**：没车的时候中位不到 3 分钟，有四台车的时候超过 6 分钟。
+**而且这可以验证。** 如果真是排队，那在场的车越多，等得应该越久。**确实如此，而且非常干净**：没车 13 分钟，前面一台 16 分钟，两台 20，三台 26，四台 32，五台以上 40。
+
+**这是观测数据能给出的最干净的剂量-反应关系，也是整个分析里最强的一条证据。**
 
 ---
 
@@ -174,9 +178,9 @@ It does. With nobody there, the median stop is under 3 minutes. With four trucks
 **EN.**
 There is an obvious question here. Maybe there is a queue because the shovel simply cannot load fast enough.
 So we measured that. We looked at how quickly trucks leave the load zone when the shovel is busy.
-The answer is about one truck every 8 minutes. So roughly 7 trucks an hour.
-And how many is it actually doing? About 3.7 an hour.
-So the shovel is working about half the time. It is idle for the other half.
+The answer is about one truck every 8 minutes. So roughly 7.6 trucks an hour.
+And how many is it actually doing? About 4.2 an hour.
+So the shovel is working a bit over half the time. It is idle for the rest.
 That is the interesting part. There is a queue in front of it, and it is idle half the time.
 Those two things together mean one thing: the trucks are not arriving evenly.
 They come in bunches. The shovel is swamped, then it waits, then it is swamped again.
@@ -184,9 +188,9 @@ So a bigger shovel would not help. The problem is the timing of arrivals.
 
 **中.** 这里有个明显的问题：**会不会就是因为铲车装不过来，所以才排队？**
 
-所以我们量了一下：铲车忙的时候，卡车多久离开一次装车区。答案是**大约每 8 分钟一台，也就是每小时约 7 台**。那它实际在做多少？**每小时约 3.7 台**。
+所以我们量了一下：铲车忙的时候，卡车多久离开一次装车区。答案是**大约每 8 分钟一台，也就是每小时约 7.6 台**。那它实际在做多少？**每小时约 4.2 台**。
 
-**所以铲车大概有一半时间在干活，另一半闲着。**
+**所以铲车有一半多一点的时间在干活，其余闲着。**
 
 **这才是有意思的地方：它前面排着队，而它有一半时间是闲的。** 这两件事放一起只说明一件事——**卡车到得不均匀**。它们成堆地来，铲车被淹一阵，然后等一阵，然后又被淹。
 
@@ -199,11 +203,11 @@ So a bigger shovel would not help. The problem is the timing of arrivals.
 **EN.**
 Now we have delays, but they are in truck-hours. That is hard to compare across different causes.
 So we convert everything into the same unit: extra loads per day.
-The logic is simple. This fleet puts 312 truck-hours into the loop every day.
-One full loop currently takes 232 minutes. That works out to 80.6 loads a day.
-Now suppose we remove the queue at the load zone. The loop drops to 198 minutes.
-Same 312 hours, shorter loop — so 94.5 loads a day.
-That is 14 more loads, from that one fix.
+The logic is simple. This fleet puts 417 truck-hours into the loop every day.
+One full loop currently takes 282 minutes. That works out to 88.6 loads a day.
+Now suppose we remove the queue at the load zone. The loop drops to 271 minutes.
+Same 417 hours, shorter loop — so 92.2 loads a day.
+That is 3.6 more loads, from that one fix.
 We do this for every cause, and then we rank them.
 One warning about the ranking. You cannot add these numbers up.
 Each one assumes the others stay as they are. If you fixed everything at once you would get more than the sum, not less.
@@ -211,9 +215,9 @@ So we use the list to decide what to do first. Not to promise a total.
 
 **中.** 现在我们有了延误，但单位是卡车小时，不同原因之间没法比。**所以全部换成同一个单位：每天多几车。**
 
-逻辑很简单。这支车队每天往循环里投 **312 卡车小时**。现在跑一圈要 232 分钟，算下来是 **80.6 车/天**。
+逻辑很简单。这支车队每天往循环里投 **417 卡车小时**。现在跑一圈要 282 分钟，算下来是 **88.6 车/天**。
 
-假设我们去掉装车区的排队，一圈变成 198 分钟。**同样的 312 小时，圈短了，就是 94.5 车/天。** 也就是**这一项值 14 车/天**。
+假设我们去掉装车区的排队，一圈变成 271 分钟。**同样的 417 小时，圈短了，就是 92.2 车/天。** 也就是**这一项值 3.6 车/天**。
 
 每个原因都这么算一遍，然后排序。
 
@@ -224,26 +228,26 @@ So we use the list to decide what to do first. Not to promise a total.
 ## 10 ｜ 结果 The result
 
 **EN.**
-For November, at this load zone, here is the ranking.
-Queue at the load zone comes first. Worth about 14 loads a day.
-The dump is second, worth about 6.
-Then the stations near the dump, worth about 5.
-And the two road items — the actual driving — come seventh and eighth. Worth 2 and 1.6.
-So the road is not the problem here. Once you take the parked time out of it, the driving is efficient.
-In fact, empty trucks drive faster than loaded ones, which is what you would expect physically.
-Before we showed the fix, they looked slower. That was the parked time.
-One more thing about the ranking. There are two items we deliberately keep out of it.
-Overnight parking is worth 42 loads a day on paper. That is bigger than everything else combined.
-But no dispatcher can recover it. You would have to add a shift.
-Same with the shift change. So we report both, but separately, because they go to a different person.
+For November, at this load zone, here is what comes out — and the honest headline is that nothing wins.
+Two items are level at the top, both worth about 5.8 loads a day. One is the queue at the weighbridge and tarping point on the dump side. The other is trucks standing still in places the mine has never drawn a zone around.
+Then the queue at the shovel at 3.6, and the queue at the pit-side stations at 3.5.
+The two road items — the actual driving — are fifth and sixth, worth 2.5 and 2.
+So the road is not the problem here. Once you take the parked time out of it, the driving is efficient. Empty trucks drive faster than loaded ones — 58 minutes against 60 — which is what you would expect physically.
+So four items are worth roughly the same, and our own rule says we do not name a winner unless it leads by five loads a day. It does not. So we report a group, not a ranking.
+The second of those two leading items deserves a comment. It is not a finding about the operation — it is a gap in the data. Only 11 of the 104 zones have a real outline drawn. Getting the rest would resolve the largest single item on our list.
+One more thing. There are two items we deliberately keep out of the ranking: time trucks spend stopped off the loop, and phase time the GPS never recorded at all. Both are larger than any lever. Neither is something a dispatcher can act on.
 
-**中.** 十一月，这个装车区，排序是这样。
+**中.** 十一月，这个装车区，结果是这样——**而诚实的说法是：没有第一名。**
 
-**装车区排队第一，约 14 车/天。** 卸点第二，约 6。然后是卸点附近的站点，约 5。**而两条路——真正的行驶——排第七和第八，值 2 和 1.6。**
+**并列第一的有两项，各约 5.8 车/天。** 一个是卸点侧过磅站和盖篷布点的排队，另一个是**卡车停在矿方从来没画过区域的地方**。然后是装车区排队 3.6、采场侧站点排队 3.5。**两条路——真正的行驶——排第五第六，值 2.5 和 2。**
 
-**所以路在这里不是问题。** 把停着的时间拿掉之后，行驶是高效的。**实际上空车比重载开得快**，这才符合物理常识。**在我们修正之前，空车看起来更慢——那是停车时间造成的。**
+**所以路在这里不是问题。** 把停着的时间拿掉之后，行驶是高效的。**空车比重载开得快**——58 分钟对 60 分钟——这才符合物理常识。
 
-关于排序还有一点。**有两项我们刻意不放进去。** 过夜停放纸面上值 42 车/天，比其他所有加起来还大。**但没有调度员能回收它，那得增加班次。** 换班交接同理。**所以两项都报，但单独报，因为它们是给另一个人看的。**
+**四项差不多大。而我们自己的规矩是：领先不到 5 车/天就不点名。它没领先到。所以我们报一组，不报排名。**
+
+**并列第一里的第二项值得单独说一句：它不是关于作业的发现，是数据的缺口。** 104 个区域里只有 11 个画了真实轮廓。**把其余的拿到，就能解掉我们表上最大的一项。**
+
+还有一点。**有两项我们刻意不放进排序**：卡车停在循环外的时间，以及 **GPS 根本没记录到的那部分时间**。**两项都比任何一个杠杆大，但都不是调度员能动的。**
 
 ---
 
@@ -256,9 +260,9 @@ The lower one is plus 21 percent. Here is what that means.
 We took every normal working day in November and found the best one.
 If every normal day matched that best day, output would be 21 percent higher.
 That number has something behind it — that day actually happened. So we know it is achievable.
-About half of it comes from having more trucks out on the day, which is a maintenance question.
-The other half comes from each truck doing more trips. That is the half that depends on how they are dispatched.
-The higher number is plus 75 percent. That is if every delay we identified disappeared at once.
+About 6 points of it come from having more trucks out on the day, which is a maintenance question.
+The other 13 points come from each truck doing more trips. That is the part that depends on how they are dispatched.
+The higher number is plus 38 percent. That is if every delay we identified disappeared at once.
 That has never happened, and it never will. We report it as an upper limit, not as a target.
 Separately from all this: four days in November were near-shutdowns. Those four days cost 12 percent of the month's output.
 That is bigger than any of our items. But it is a maintenance or weather problem, not a dispatch one.
@@ -267,9 +271,9 @@ That is bigger than any of our items. But it is a maintenance or weather problem
 
 **低的那个是 +21%。** 意思是：我们把十一月所有正常工作日拿出来，找出最好的那一天。**如果每个正常日都做到那一天的水平，产量就高 21%。** 这个数是有依据的——**那一天真的发生过，所以我们知道它能做到。**
 
-其中大约一半来自那天出勤的车更多，**那是维修的问题**。另一半来自每台车多跑了几趟，**那一半才取决于怎么调度**。
+其中约 **6 个百分点**来自那天出勤的车更多，**那是维修的问题**。另 **13 个百分点**来自每台车多跑了几趟，**那部分才取决于怎么调度**。
 
-**高的那个是 +75%**，意思是我们找出的所有延误一次全部消失。**那从没发生过，也不会发生。我们把它当上限报，不是当目标。**
+**高的那个是 +38%**，意思是我们找出的所有延误一次全部消失。**那从没发生过，也不会发生。我们把它当上限报，不是当目标。**
 
 另外单独说一件事：**十一月有四天几乎停产，那四天占掉了全月产量的 12%。** 比我们任何一项都大，**但那是维修或天气的问题，不是调度的**。
 
@@ -280,30 +284,29 @@ That is bigger than any of our items. But it is a maintenance or weather problem
 **EN.**
 Two things we did to check ourselves.
 First, the same code on all five months, with nothing adjusted in between.
-The shovel is never near full — it stays between 43 and 59 percent. Every month.
-The driving share stays between 56 and 58 percent. Every month.
-And the empty return road is seventh or eighth every month. So that correction is not a one-month accident.
+The shovel is never near full — it stays between 42 and 63 percent. Every month.
+The driving share stays between 35 and 43 percent. Every month.
+And first place is a tie in all five months. Nothing clears the margin anywhere, so "there is no single winner" is not a November accident either.
 Second, there are a few numbers in the method that we chose rather than derived.
 For example, we call a truck stopped when its speed is 2 km an hour or less. That is our choice.
 So we checked it against the odometer, which is a completely separate sensor from the GPS position.
 Over all the time we labelled "stopped", the odometer moved at 0.3 km an hour. Essentially not moving.
 Over the time we labelled "driving", 35 km an hour. So the two sensors agree.
-We did the same kind of test for the other chosen numbers — 175 different combinations.
-The ranking did not change. The shovel was never full in any of them.
-One thing did move a lot: the theoretical maximum output, which swung from 125 to 273 loads a day.
-So we stopped reporting that number at all.
+The other rule worth checking is where we draw the line between a station and a place trucks just drive past.
+We do not have to choose carefully, because the data leaves a gap: places on the route either have trucks stopping almost every time, 0.89 and up, or almost never, 0.20 and down. Nothing sits in between, so any threshold in that gap gives the same answer.
+One number we deliberately do not report at all is the theoretical maximum output. It moves too much under plausible choices to be worth quoting.
 
 **中.** 我们做了两件事来自检。
 
-**第一，同一套代码跑了全部五个月，中间什么都没调。** 铲车从来不接近满负荷，始终在 43% 到 59% 之间，每个月都是。行驶占比始终在 56% 到 58%，每个月都是。**空车回程路每个月都排第七或第八**——所以那个修正不是某一个月的偶然。
+**第一，同一套代码跑了全部五个月，中间什么都没调。** 铲车从来不接近满负荷，始终在 **42% 到 63%** 之间，每个月都是。行驶占比始终在 **35% 到 43%**。**而且五个月的第一名全部是并列**——没有哪个月有杠杆能拉开差距，所以"没有单一第一名"也不是十一月的偶然。
 
 **第二，方法里有几个数字是我们选的，不是推出来的。** 比如我们规定速度 ≤2 km/h 算"停着"，**这是我们选的**。
 
 **所以我们拿里程表来验**——那是跟 GPS 位置完全无关的另一个传感器。**在我们标为"停着"的全部时间里，里程表的平均速度是 0.3 km/h，基本没动。在标为"在开"的时间里是 35 km/h。两个传感器互相印证。**
 
-其他选定的数字也做了同类测试，一共 **175 种组合**。**排序没有变，铲车在任何一种组合下都没有满过。**
+另一条值得验的规则是**站点和"只是开过去的地方"之间那条线画在哪**。**我们其实不用小心地挑**，因为数据本身留了空档：路线上的地方要么几乎每次都停（0.89 以上），要么几乎从不停（0.20 以下），**中间是空的**，所以那条线画在空档里的任何位置，结果都一样。
 
-**有一样确实晃得厉害：理论最大产量，从 125 到 273 车/天。所以那个数我们干脆就不报了。**
+**有一个数我们刻意完全不报：理论最大产量。** 它在合理的参数范围内晃得太厉害，不值得引用。
 
 ---
 
@@ -319,11 +322,12 @@ There is no payload data, so everything is in loads, never tonnes.
 And this is one flow, at one mine, over five months, with no winter.
 Finally, this is a diagnosis. It is not proof. To prove a gain, you would have to change something and measure again.
 On the paper. It uses the same data and the same overall idea, and it is also diagnostic.
-A few things differ. The paper fixes the dwell boundary at 120 minutes; here it is learned from the data. The paper models two stations; here we find six.
+A few things differ. The paper decides queue-versus-idle from how long a stop lasted and where it sat relative to a zone outline; here it is decided by whether another truck was already being served. The paper models two stations; here we find six.
 And the paper gives one number, plus 53.8 percent, where we give a range.
 But those two numbers answer different questions. The paper asks what happens if every trip hits the fastest baseline. We ask what happens if every day matches your own best day.
 Ours is deliberately a floor. Neither number corrects the other.
-One last thing I want to be clear about. The problem I showed you earlier — the parked time counted as road time — that is ours, not the paper's. The paper works at the individual GPS point level and already separates moving from stopped.
+One thing to be clear about, because it affects how you read the paper alongside this. The pipeline the paper describes works at the level of individual GPS points and already separates moving from stopped. Everything I have said about durations applies to the layer we built on top of it, not to that.
+And that is the part I would keep if you forget everything else. Almost every quantity in a study like this is a duration, and almost every duration is two timestamps subtracted. That is the step to be suspicious of. It tells you when something started and when it ended, and nothing whatsoever about what happened in between — and at this mine, what happened in between is more than half the time. Everything in this talk follows from checking that.
 
 **中.** 几条限制我想说清楚。
 
@@ -335,21 +339,23 @@ One last thing I want to be clear about. The problem I showed you earlier — th
 
 **最后，这是诊断，不是证明。要证明收益，得改点什么再测一次。**
 
-关于论文。**它用同样的数据、同样的整体思路，也是诊断性的。** 有几处不同：论文把停留分界线固定在 120 分钟，这里是从数据学出来的；论文建模两个站点，这里找到六个；论文给一个数 +53.8%，我们给区间。
+关于论文。**它用同样的数据、同样的整体思路，也是诊断性的。** 有几处不同：论文按"停了多久"和"相对区域多边形停在哪"来判排队还是闲置，这里按"到达那一刻有没有别的车正在被服务"来判；论文建模两个站点，这里找到六个；论文给一个数 +53.8%，我们给区间。
 
 **但这两个数回答的是不同的问题。** 论文问"如果每趟都达到最快那批会怎样"，我们问"如果每天都做到你自己最好的那天会怎样"。**我们的是刻意取的下界。谁也不是在纠正谁。**
 
-**最后一点我想说明白：我前面讲的那个问题——把停车时间算成路上时间——那是我们的问题，不是论文的。** 论文是在单个 GPS 点的层面工作的，**本来就区分了移动和静止**。
+**有一点要说清楚，因为它关系到你怎么把论文和这份材料放在一起读。** 论文描述的那套流程是在单个 GPS 点的层面工作的，**本来就区分移动和静止**。我讲的所有关于"时长"的事，针对的是我们加在它上面那一层，不是它。
+
+**而这一条，如果别的都忘了，我希望留下。** 这类研究里几乎每个量都是"时长"，而几乎每个时长都是两个时间戳相减。**那一步才是该起疑的地方。** 它告诉你什么时候开始、什么时候结束，**完全不告诉你中间发生了什么**——而在这个矿，中间发生的事占了一半以上的时间。**这次讲的所有内容，都是从核对这一件事开始的。**
 
 ---
 
 ## 备用 · 被问到再答 If asked
 
 **Q: 为什么是 2 km/h？为什么是 30 分钟？**
-**EN.** Both are chosen, not derived. We tested 175 combinations of them. The ranking never changed, and the shovel was never full in any of them.
-**中.** 都是选的不是推的。测了 175 种组合，排序从没变过，铲车在任何组合下都没满过。
+**EN.** Both are chosen, not derived. The 2 km/h one we checked against the odometer, which is a separate sensor: time we call stopped shows 0.3 km/h, time we call driving shows 35.4. The 30-minute one has not been re-swept since the cycle construction changed, so I would not claim more for it than that.
+**中.** 都是选的不是推的。2 km/h 那个拿里程表验过——那是另一个传感器：我们标为"停着"的时间里程表走 0.3 km/h，标为"在开"的走 35.4。30 分钟那个在周期构建改动之后没有重扫过，所以我不会替它多声称什么。
 
-**Q: 八项能加起来吗？**
+**Q: 这些项能加起来吗？**
 **EN.** No. Each one assumes the others stay. Fixing them all at once gives more than the sum, not less.
 **中.** 不能。每项都假设别的不变。全部一起修比相加还多，不是更少。
 
@@ -357,9 +363,9 @@ One last thing I want to be clear about. The problem I showed you earlier — th
 **EN.** The step that finds the places reads no names — only how often trucks pass and whether they stop. So in principle yes. But we have only tested one flow.
 **中.** 找地点那一步不读名字，只看经过频率和停不停，所以原则上可以。但我们只测过一条流。
 
-**Q: 那 405 小时"不知道在哪"的停留是什么？**
-**EN.** Trucks stopped somewhere the mine has not drawn a zone around. 93 of the 104 zones have no real shape. We would need access to the zone system to fix it.
-**中.** 卡车停在了矿方没画区域的地方。104 个区域里 93 个没有真实形状。要解决得有区域系统的访问权限。
+**Q: 那 770 小时"不知道在哪"的停留是什么？**
+**EN.** Trucks stopped somewhere the mine has not drawn a zone around. 93 of the 104 zones have no real shape. It is now joint first on the list, at 770 truck-hours, and we would need access to the zone system to resolve it.
+**中.** 卡车停在了矿方没画区域的地方。104 个区域里 93 个没有真实形状。**现在它并列第一，770 卡车小时**，要解决得有区域系统的访问权限。
 
 **Q: 为什么你们的数字比论文低？**
 **EN.** Different question. Ours is a floor with a real day behind it. Theirs is what happens if every trip is perfect.

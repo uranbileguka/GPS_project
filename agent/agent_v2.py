@@ -3,15 +3,19 @@
 agent_v2.py — rebuilt diagnostic agent (the new L3 design we worked out).
 
 Additive: does NOT modify agent_diagnose.py or the collaborator's code.
-Self-contained on data/cycles_all_months.csv (+ ml_thresholds for the GMM cut).
+Builds its own cycle table from raw GPS; data/cycles_all_months.csv is only a fallback.
 
 WHAT'S NEW vs agent_diagnose.py
-  L1/L2 cut line ...... learned by GMM (ml_thresholds), not the hand-set 120 min.
+  no cut line ......... none is needed. The 120-min queue/long-stop threshold existed to
+                        separate real stays from stays that only looked long because they
+                        were measured between the wrong two timestamps; dwell is now the
+                        visit's own arrival to departure, and the distribution is unimodal.
   地基一 budget ....... a truck-hour is either IN the loop (moving + loading + queue) or
-                        OUT of the loop (on-shift idle / overnight parked).
+                        OUT of it, and which one is decided by WHERE the truck was, never
+                        by the time of day.
   地基二 cause ........ each waiting chunk is tagged by CAUSE from position + context, not
-                        duration alone: overnight -> parked; others present (concurrency>=2)
-                        -> queue; long+alone+daytime -> idle. (breakdown needs raw pings.)
+                        duration alone: another truck already being served -> queue;
+                        nobody there and still slow -> reported separately, unexplained.
   L3-A ................ utilisation rho for BOTH shovel and dump, compared to 1.0 (no 0.85).
   L3-B ................ Little's law: loads/day = cycling truck-h/day / cycle-time; the
                         ceiling is the first station to reach rho = 1.
@@ -55,14 +59,13 @@ What the ping layer adds:
 
 use_pings=False keeps the old path for speed. It is KNOWN-BIASED; the output says so.
 """
-import os, sys, json, glob
+import os, sys, json, glob, re
 import numpy as np, pandas as pd
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 CYCLES_CSV = os.path.join(_ROOT, 'data', 'cycles_all_months.csv')
 sys.path.insert(0, _HERE)
-import ml_thresholds as mlt                     # GMM cut
 
 ZONES = {
     25559: dict(name='BN load (Баруун наран /Зүүн/)', region='bn',    haul_km=34),
@@ -186,10 +189,10 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
     tp = pd.read_csv(src, low_memory=False).drop_duplicates()
     tp['get_time'] = pd.to_datetime(tp['get_time'], errors='coerce')
     s = tp.merge(dump, left_on='tracker_id', right_on='id', how='inner')
-    s = s[['lat', 'lng', 'get_time', 'technic_m_type', 'tracker_id', 'label']].copy()
-    s['date'] = s.get_time.dt.date; s['hour'] = s.get_time.dt.hour
-    s['lat'] = s.lat.round(4); s['lng'] = s.lng.round(4)
-    s = s.drop_duplicates(subset=['lat', 'lng', 'date', 'hour', 'tracker_id'], keep='first')
+    s = s[['lat', 'lng', 'get_time', 'speed', 'technic_m_type', 'tracker_id', 'label']].copy()
+    # The old build rounded to 4 dp (~11 m) and kept one ping per (lat, lng, date, hour,
+    # truck). Two visits to the same spot in the same hour then collapsed into one, so the
+    # second load-zone arrival vanished and two trips merged. Costs ~0.6% of trips; dropped.
 
     zones = _material_zones()
     gp = gpd.GeoDataFrame(s, geometry=gpd.points_from_xy(s.lng, s.lat), crs='EPSG:4326')
@@ -202,6 +205,7 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
     for tid, g in tagged.groupby('tracker_id'):
         g = g.sort_values('get_time')
         zid = g.zone_id.values; lt = g.zone_load_type.values; mat = g.zone_material_type.values
+        stopped = (g.speed.values <= STOP_SPEED)
         t = g.get_time.values; la = g.lat.values.astype(float); lo = g.lng.values.astype(float)
         step = np.zeros(len(g))
         if len(g) > 1:
@@ -219,14 +223,37 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
             j = i
             while j + 1 < n and zid[j + 1] == zid[i]:
                 j += 1
-            visits.append((lt[i], zid[i], mat[i], t[i], t[j])); i = j + 1
-        pl = pu = None
-        for vt, vz, vm, arr, dep in visits:
+            # A LOAD visit only counts if the truck actually stopped: presence alone let
+            # drive-throughs close a cycle, and 41% of load "visits" lasted under a minute
+            # (median 12 s, 4 pings) — a truck clipping the polygon on its way past, not one
+            # being loaded. dwell_s is measured on this visit, so it has to be a real stop.
+            # Unload visits are NOT held to that test. Only 43% of them contain a stopped
+            # ping because the stockpile polygons are drawn once while the tipping face
+            # moves; requiring a stop there would discard real trips. Reaching the dump area
+            # is enough evidence the load was delivered.
+            if lt[i] != 'load' or stopped[i:j + 1].any():
+                visits.append((lt[i], zid[i], mat[i], t[i], t[j], i, j))
+            i = j + 1
+
+        def max_gap_s(a, b):
+            """Largest hole between consecutive pings inside [a, b]. This is what tells a
+            genuinely slow trip apart from a stretch where the tracker was simply off."""
+            w = t[a:b + 1]
+            return float(np.diff(w).max() / np.timedelta64(1, 's')) if len(w) > 1 else 0.0
+
+        pl = pu = None; n_unload = 0
+        for vt, vz, vm, arr, dep, vi, vj in visits:
             if vt == 'load':
                 if pl is not None and pu is not None:
-                    dl, dz, dm = pl; ua, ud, uz, um = pu
+                    dl, dz, dm, dj = pl; ua, ud, uz, um = pu
                     cy = (arr - dl) / np.timedelta64(1, 's')
-                    if 0 < cy <= max_cycle_hours * 3600:
+                    # Emit every load->unload->load trip. The old code dropped anything over
+                    # max_cycle_hours as "an offline gap or a shift break", which threw away
+                    # 10.4% of BN's real trips AND handed their time to the next row's dwell,
+                    # inflating the load-zone queue. Duration cannot tell those two cases
+                    # apart; a hole in the ping stream can, so measure that instead and let
+                    # the caller decide.
+                    if cy > 0:
                         rows.append(dict(
                             tracker_id=tid, region=info['technic_m_type'], truck=info['label'],
                             load_zone=int(dz), load_mat=dm, unload_zone=int(uz), unload_mat=um,
@@ -235,12 +262,30 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
                             haul_s=(ua - dl) / np.timedelta64(1, 's'),
                             dump_s=(ud - ua) / np.timedelta64(1, 's'),
                             return_s=(arr - ud) / np.timedelta64(1, 's'), cycle_s=cy,
-                            haul_km=pkm(dl, ua), return_km=pkm(ud, arr), cycle_km=pkm(dl, arr)))
-                    pl = (dep, vz, vm); pu = None
+                            haul_km=pkm(dl, ua), return_km=pkm(ud, arr), cycle_km=pkm(dl, arr),
+                            max_gap_s=max_gap_s(dj, vi), n_unload_visits=n_unload,
+                            # The load-zone stay measured directly from THIS visit's own
+                            # arrival and departure. The old dwell was the next ROW's
+                            # depart_load minus this row's arrive_load, which spans any
+                            # re-entry the truck made in between -- only 50% of that window
+                            # was actually at the load zone.
+                            dwell_own_s=(dep - arr) / np.timedelta64(1, 's'),
+                            over_max_hours=bool(cy > max_cycle_hours * 3600)))
+                    pl = (dep, vz, vm, vj); pu = None; n_unload = 0
                 else:
-                    pl = (dep, vz, vm)
+                    pl = (dep, vz, vm, vj)
             elif pl is not None:
-                pu = (arr, dep, vz, vm) if pu is None else (pu[0], dep, pu[2], pu[3])
+                # FIRST unload visit only. The old code kept the first arrival and extended
+                # to the LAST departure, so a trip that touched the dump area more than once
+                # booked everything in between -- including time parked well away from it --
+                # as dump dwell. Measured: only 39.8% of that window was actually at a dump.
+                # A load can only be dumped once; whatever follows belongs to the return leg,
+                # which the ping layer already splits by where the truck really was.
+                if pu is None:
+                    pu = (arr, dep, vz, vm)
+                    n_unload = 1
+                else:
+                    n_unload += 1
     C = pd.DataFrame(rows)
     if not C.empty:
         C['date'] = C.depart_load.dt.date.astype(str)
@@ -263,28 +308,54 @@ def _cycles_df():
     return _CYCLES
 
 
-def load_cycles(zone_id, month=None, build_if_missing=True):
-    """month=None -> all months for that zone (used as the POOLED baseline reference).
+def raw_months():
+    """Months we hold raw GPS for, oldest first."""
+    out = []
+    for p in glob.glob(GPS_GLOB.format(y='*', m='*')):
+        mm = re.search(r'gps_data_(\d{4})-(\d{1,2})\.csv$', os.path.basename(p))
+        if mm:
+            out.append(f'{mm.group(1)}-{int(mm.group(2)):02d}')
+    return sorted(set(out))
 
-    If the month is not in the pre-baked table, build it from raw GPS (build_cycles). That is
-    what makes 'hand it a month it has never seen' actually work."""
+
+def _month_cycles(month, build_if_missing=True):
+    """One month of cycles, built from raw GPS whenever we hold it.
+
+    The pre-baked data/cycles_all_months.csv was produced by the pre-2026-08-12 builder,
+    which dropped every trip over MAX_CYCLE_HOURS -- 10.4% of BN's real trips -- so it is
+    used only as a fallback for months whose raw GPS is not on disk."""
+    if build_if_missing and month in raw_months():
+        B = build_cycles(month)
+        if len(B):
+            return B
     C = _cycles_df()
+    B = C[C.month == month].copy()
+    if len(B):
+        B['max_gap_s'] = np.nan            # unknown: the legacy table did not record it
+        B['over_max_hours'] = False        # by construction -- those rows were dropped
+        B['legacy_table'] = True
+    return B
+
+
+def load_cycles(zone_id, month=None, build_if_missing=True):
+    """month=None -> all months for that zone (used as the POOLED baseline reference)."""
     z = ZONES[zone_id]
-    m = (C.region == z['region']) & (C.load_zone == zone_id)
-    if month is not None:
-        m &= (C.month == month)
-        if not m.any() and build_if_missing:
-            B = build_cycles(month)
-            if len(B):
-                C = pd.concat([C, B], ignore_index=True)
-                for c in ['depart_load', 'arrive_load', 'arrive_unload', 'depart_unload']:
-                    C[c] = pd.to_datetime(C[c])
-                m = ((C.region == z['region']) & (C.load_zone == zone_id) & (C.month == month))
-    cyc = C[m].copy()
+    months = [month] if month is not None else raw_months()
+    parts = [_month_cycles(mm, build_if_missing) for mm in months]
+    parts = [p for p in parts if len(p)]
+    if not parts:
+        return pd.DataFrame()
+    C = pd.concat(parts, ignore_index=True)
+    for c in ['depart_load', 'arrive_load', 'arrive_unload', 'depart_unload']:
+        C[c] = pd.to_datetime(C[c])
+    cyc = C[(C.region == z['region']) & (C.load_zone == zone_id)].copy()
     cyc = cyc.sort_values(['tracker_id', 'depart_load']).reset_index(drop=True)
     cyc['next_depart'] = cyc.groupby('tracker_id')['depart_load'].shift(-1)
-    same = cyc['tracker_id'].eq(cyc['tracker_id'].shift(-1))
-    cyc['dwell_s'] = np.where(same, (cyc['next_depart'] - cyc['arrive_load']).dt.total_seconds(), np.nan)
+    if 'dwell_own_s' in cyc.columns:
+        cyc['dwell_s'] = cyc['dwell_own_s']          # this visit's own arrival -> departure
+    else:                                             # legacy table: fall back to the proxy
+        same = cyc['tracker_id'].eq(cyc['tracker_id'].shift(-1))
+        cyc['dwell_s'] = np.where(same, (cyc['next_depart'] - cyc['arrive_load']).dt.total_seconds(), np.nan)
     cyc.loc[cyc['dwell_s'] <= 0, 'dwell_s'] = np.nan
     return cyc
 
@@ -299,22 +370,25 @@ def _spans_overnight(t0, t1, hour=NIGHT_HOUR):
     return mark <= t1
 
 
-def _concurrency(cyc, cut_min):
-    """Queue signal: how many OTHER trucks were actively at the load zone the MOMENT this
-    truck arrived. 'Active' = a short, non-overnight stay (a real loading/queue presence),
-    so a multi-hour parked truck's stay does NOT inflate everyone's count."""
+def _concurrency(cyc, cut_min=None):
+    """Queue signal: how many OTHER trucks were at the load zone the MOMENT this truck
+    arrived.
+
+    The old version had to filter out 'inactive' stays (overnight, longer than 2x the GMM
+    cut) because dwell was the next row's departure minus this arrival, so a truck that had
+    driven away still counted as present for hours. dwell_s is now the truck's own measured
+    stay, so every stay is a real presence and no filter is needed. cut_min is accepted for
+    call compatibility and ignored."""
     a = cyc['arrive_load'].values.astype('datetime64[s]').astype(np.int64)
-    b = cyc['next_depart'].values.astype('datetime64[s]').astype(np.int64)
     dwell = cyc['dwell_s'].values
-    overnight = cyc.apply(lambda r: _spans_overnight(r['arrive_load'], r['next_depart']), axis=1).values
-    active = (~np.isnan(dwell)) & (~overnight) & (dwell < 2 * cut_min * 60)   # loading/queue presences
-    aa, bb = a[active], b[active]
+    b = a + np.nan_to_num(dwell).astype(np.int64)             # this stay's own departure
+    ok = ~np.isnan(dwell)
+    aa, bb = a[ok], b[ok]
     n = len(cyc); conc = np.full(n, np.nan)
     for i in range(n):
-        if np.isnan(dwell[i]):
+        if not ok[i]:
             continue
-        present = int(np.sum((aa <= a[i]) & (bb >= a[i])))   # active stays covering my arrival
-        conc[i] = present - (1 if active[i] else 0)          # exclude myself -> trucks ahead
+        conc[i] = int(np.sum((aa <= a[i]) & (bb >= a[i]))) - 1   # minus myself -> trucks ahead
     return conc
 
 
@@ -329,21 +403,27 @@ def tag_causes(cyc, cut_min, ff_q=FF_Q, svc_q=SVC_Q, ref=None):
                     its own 'free flow'. Attribution is always applied to `cyc`."""
     r = cyc if ref is None else ref
     d = cyc['dwell_s']
-    cut_s = cut_min * 60
-    svc_load = r['dwell_s'].clip(upper=cut_s).dropna().quantile(svc_q)   # no-queue loading (s)
-    conc = _concurrency(cyc, cut_min)
-    overnight = cyc.apply(lambda r: _spans_overnight(r['arrive_load'], r['next_depart']), axis=1).values
+    conc = _concurrency(cyc)
 
-    wait = np.maximum(0, d.values - svc_load)                     # time beyond loading (s)
-    wait = np.where(np.isnan(d.values), 0.0, wait)
-    is_long = d.values > cut_s
-    queue_w  = np.where((~overnight) & (conc >= 1), wait, 0.0)     # trucks ahead on arrival -> queue
-    parked_w = np.where(overnight & is_long, wait, 0.0)           # overnight long stay
-    idle_w   = np.where((~overnight) & (conc < 1) & is_long, wait, 0.0)  # long, alone, daytime
-    # (short waits with no one around = loading variance -> left in loading, not counted)
+    # Same causal rule the six discovered stations use (see station_split): loading takes as
+    # long as it takes when nobody else is there. No percentile, no learned cut-point.
+    # The GMM cut existed to separate genuine stays from the multi-hour artefacts the old
+    # dwell was full of; with dwell measured directly there is nothing left to separate, and
+    # the GMM now fits noise (it returned 1.8 min on the corrected November data).
+    svc_load = float(pd.Series(np.where(conc == 0, d.values, np.nan)).median())
+    if not np.isfinite(svc_load) or svc_load <= 0:
+        svc_load = float(r['dwell_s'].dropna().quantile(ff_q))
+
+    served = np.minimum(np.nan_to_num(d.values, nan=svc_load), svc_load)
+    excess = np.where(np.isnan(d.values), 0.0, np.maximum(0, d.values - svc_load))
+    queue_w = np.where(conc >= 1, excess, 0.0)       # someone was ahead of me -> queue
+    solo_w = np.where(conc == 0, excess, 0.0)        # nobody there and still slow -> unexplained
+    # Parking, shift breaks and overnight no longer appear here at all. They are not part of
+    # a measured load-zone stay, and the ping layer books them against the place the truck
+    # was actually sitting instead of against a clock rule.
 
     # in-loop dwell per cycle = loading + queue (the truck is still in the loop while queuing)
-    inloop = np.where(np.isnan(d.values), svc_load, svc_load + queue_w)
+    inloop = served + queue_w
 
     ff_haul = r['haul_s'].quantile(ff_q)
     ff_return = r['return_s'].quantile(ff_q)
@@ -354,11 +434,12 @@ def tag_causes(cyc, cut_min, ff_q=FF_Q, svc_q=SVC_Q, ref=None):
     h = lambda x: float(np.nansum(np.maximum(0, x))) / 3600.0
     buckets = dict(
         queue       = h(queue_w),
+        load_solo   = h(solo_w),
         road_return = h(cyc['return_s'] - ff_return),
         road_haul   = h(cyc['haul_s'] - ff_haul),
         dump        = h(cyc['dump_s'] - svc_dump) if len(dump_cyc) else 0.0,
     )
-    reservoir = dict(on_shift_idle=h(idle_w), overnight_parked=h(parked_w))
+    reservoir = {}          # off-loop time is located by the ping layer, not inferred here
     baselines = dict(svc_load_min=svc_load / 60, ff_haul_min=ff_haul / 60,
                      ff_return_min=ff_return / 60, svc_dump_min=svc_dump / 60, cut_min=cut_min,
                      ff_q=ff_q, svc_q=svc_q, baseline_ref='pooled' if ref is not None else 'month')
@@ -648,7 +729,8 @@ def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False)
     base_b, reservoir, baselines, svc_load, inloop_mean = tag_causes(cyc, cut_min, ff_q, svc_q)
     h = lambda x: float(np.nansum(np.maximum(0, x))) / 60
 
-    buckets = {'queue_shovel': base_b['queue'], 'dump': base_b['dump']}
+    buckets = {'queue_shovel': base_b['queue'], 'load_solo': base_b['load_solo'],
+               'dump': base_b['dump']}
     stations = {}
     for b in st_boxes:
         name = b['name']
@@ -676,10 +758,19 @@ def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False)
     reservoir = dict(reservoir)
     off_names = [b['name'] for b in off_boxes if b['name'] in R.columns]
     reservoir['offloop_stop'] = float(sum(R[n].sum() for n in off_names)) / 60
+    # Phase duration the pings cannot account for: a hole in the stream contributes at most
+    # DT_CAP, so a trip that ran while the tracker was off leaves a shortfall. Keeping every
+    # trip (rather than dropping the long ones) makes this visible instead of hiding it in a
+    # duration cap. Booked so the identity closes; it is missing data, not recoverable time,
+    # so it sits outside the ranking.
+    shortfall = float(R.total.sum() - R.drop(columns=['leg', 'total']).sum().sum())
+    reservoir['unrecorded_gap'] = max(0.0, shortfall) / 60
     drive_share = 100 * R['driving'].sum() / R.drop(columns=['leg', 'total']).sum().sum()
     legs_info = dict(driving_share_pct=round(drive_share),
                      identity_error_pct=round(100 * (R.drop(columns=['leg', 'total']).sum().sum()
+                                                     + max(0.0, shortfall)
                                                      - R.total.sum()) / R.total.sum(), 1),
+                     unrecorded_gap_pct=round(100 * max(0.0, shortfall) / R.total.sum(), 1),
                      topology=topo.to_dict('records'),
                      offloop_places=[b['label'] for b in off_boxes])
     return buckets, reservoir, baselines, svc_load, inloop_mean, stations, legs_info
@@ -760,7 +851,10 @@ def rank_levers(buckets, reservoir, cap):
 
 
 LEVER_TEXT = {
-    'queue_shovel':       ('Queue at the shovel (incl. waiting outside the gate)', 'a: shorten the loop'),
+    'queue_shovel':       ('Queue at the shovel (another truck was already loading)',
+                           'a: shorten the loop'),
+    'load_solo':          ('Slow at the shovel with nobody else there (cause unknown)',
+                           'a: shorten the loop'),
     'dump':               ('Dump spotting / congestion', 'a: shorten the loop'),
     'road_haul':          ('Haul road, loaded — DRIVING time only', 'a: shorten the loop'),
     'road_return':        ('Haul road, empty — DRIVING time only', 'a: shorten the loop'),
@@ -788,8 +882,8 @@ TIE_MARGIN = 5.0        # #1 must beat #2 by this many loads/day to be called a 
 # car park is the shift handover (91% of those stops begin in the 04-07 / 16-19 windows) and
 # klonk is lumped with it; both are roster/maintenance decisions, not dispatch. Keeping them
 # in the dispatch ranking would credit dispatch with hours it cannot touch.
-NON_DISPATCH = {'overnight_parked': 'Overnight parking -> more shifts',
-                'offloop_stop': 'Shift handover at the car park (+ klonk) -> roster/logistics'}
+NON_DISPATCH = {'offloop_stop': 'Stopped off the loop (car park, yard) -> roster / logistics',
+                'unrecorded_gap': 'Phase time the GPS did not record -> data quality, not a lever'}
 # In-loop waste we can measure but not name. Real lost time, so it stays in the budget, but it
 # is flagged so nobody reads it as an actionable lever.
 UNATTRIBUTED = {'stopped_unmapped'}
@@ -908,12 +1002,11 @@ def diagnose_v2(zone_id, month='2025-11', with_band=True, ff_q=FF_Q, svc_q=SVC_Q
     the output carries a caveat saying so."""
     z = ZONES[zone_id]
     cyc = load_cycles(zone_id, month)
-    cut_min = round(mlt.robust_queue_cut(cyc['dwell_s'].dropna() / 60), 1)
     stations, legs_info, ping_error = {}, {}, None
     if use_pings:
         try:
             (buckets, reservoir, baselines, svc_load, inloop,
-             stations, legs_info) = tag_causes_pings(cyc, cut_min, month, ff_q, svc_q)
+             stations, legs_info) = tag_causes_pings(cyc, None, month, ff_q, svc_q)
         except (FileNotFoundError, KeyError, ValueError) as e:
             ping_error = f'{type(e).__name__}: {e}'
             use_pings = False
@@ -930,7 +1023,7 @@ def diagnose_v2(zone_id, month='2025-11', with_band=True, ff_q=FF_Q, svc_q=SVC_Q
     reach = ([l['new_loads'] for l in levers if isinstance(l['new_loads'], (int, float))]
              + [s['new_loads'] for s in _staff])
     fb = feedback(cap, max(reach)) if reach else {}
-    band = bootstrap_headline(cyc, cut_min, ff_q=ff_q, svc_q=svc_q, ref=ref) if with_band else None
+    band = bootstrap_headline(cyc, None, ff_q=ff_q, svc_q=svc_q, ref=ref) if with_band else None
     observed = observed_headline(cyc)
 
     # combined DISPATCH-recoverable ceiling: fix all in-loop waste + on-shift idle at once
@@ -954,7 +1047,7 @@ def diagnose_v2(zone_id, month='2025-11', with_band=True, ff_q=FF_Q, svc_q=SVC_Q
         note='Report the range. The truth is between; observational data cannot locate it. '
              'The collaborator paper\'s +53.8% for BN falls inside this range.')
     return dict(
-        zone_id=zone_id, name=z['name'], region=z['region'], month=month, gmm_cut_min=cut_min,
+        zone_id=zone_id, name=z['name'], region=z['region'], month=month,
         method='ping layer: six stations, causal service times' if use_pings
                else 'cycle-table only (KNOWN-BIASED road buckets)',
         ping_error=ping_error,
@@ -975,8 +1068,10 @@ def diagnose_v2(zone_id, month='2025-11', with_band=True, ff_q=FF_Q, svc_q=SVC_Q
         reservoir_truck_h={k: round(v) for k, v in reservoir.items()},
         levers=levers, staffing=staffing, recoverable_combined=recoverable, feedback=fb,
         headline_gain_band=band,
-        caveats=['GMM cut (per-zone, data-driven)',
-                 'cause = overnight + concurrency + position',
+        caveats=['every load->dump->load trip is kept; a data gap is recorded, not a duration cap',
+                 'a load-zone visit needs a real stop, so a drive-through cannot close a cycle',
+                 'load-zone stay measured from that visit itself, not from the next row',
+                 'service = median stay with nobody else there; queue = the excess with someone ahead',
                  'road buckets are DRIVING time only; station/park time is booked separately'
                  if use_pings else 'ROAD BUCKETS KNOWN-BIASED: parked time counted as road',
                  'station service = median dwell with nobody else there (causal, not a percentile)',
@@ -995,7 +1090,6 @@ def report(dx):
     p("=" * 78)
     t = dx['throughput']; s = dx['stations']; c = dx['cycle']
     p(f"THROUGHPUT : {t['loads_day']} loads/day | {t['trucks']} trucks | {t['op_hours']}h active/day")
-    p(f"GMM cut    : {dx['gmm_cut_min']} min  (loading/queue <-> long stop)")
     p(f"METHOD     : {dx.get('method','')}")
     if dx.get('ping_error'):
         p(f"   !! ping layer unavailable, fell back: {dx['ping_error']}")
