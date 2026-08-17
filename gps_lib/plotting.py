@@ -28,6 +28,16 @@ ZONE_COLOR_MAP = {
 }
 ZONE_MARKER_MAP = {"load": "o", "unload": "s"}
 
+# Fixed categorical order/colors for cycle_classification.classify_segments states —
+# assigned once so a state's color never shifts when the set of trackers shown changes.
+STATE_ORDER = ["transit", "operating", "queuing", "unplanned_idle"]
+STATE_COLOR_MAP = {
+    "transit": "#2a78d6",
+    "operating": "#1baf7a",
+    "queuing": "#eda100",
+    "unplanned_idle": "#e34948",
+}
+
 
 def _to_list(x):
     if x is None:
@@ -86,9 +96,9 @@ def plot_tracker_paths(df: pd.DataFrame, n=None, trackers=None, technic_idx=None
     unique_ids = pd.Series(work["tracker_id"].dropna()).drop_duplicates().reset_index(drop=True)
 
     if trackers is not None:
-        trackers = list(trackers) if isinstance(trackers, (list, tuple, set, pd.Series)) else [trackers]
+        trackers = list(trackers) if isinstance(trackers, (list, tuple, set, pd.Series, pd.Index)) else [trackers]
     elif technic_idx is not None:
-        idx_list = [int(i) for i in (technic_idx if isinstance(technic_idx, (list, tuple, set, pd.Series)) else [technic_idx])]
+        idx_list = [int(i) for i in (technic_idx if isinstance(technic_idx, (list, tuple, set, pd.Series, pd.Index)) else [technic_idx])]
         max_idx = len(unique_ids) - 1
         for i in idx_list:
             if i < 0 or i > max_idx:
@@ -330,9 +340,9 @@ def plot_zones_with_tracker_paths(zone_df: pd.DataFrame, zone_meta_df: pd.DataFr
 
     unique_ids = pd.Series(work["tracker_id"].dropna()).drop_duplicates().reset_index(drop=True)
     if trackers is not None:
-        trackers = list(trackers) if isinstance(trackers, (list, tuple, set, pd.Series)) else [trackers]
+        trackers = list(trackers) if isinstance(trackers, (list, tuple, set, pd.Series, pd.Index)) else [trackers]
     elif technic_idx is not None:
-        idx_list = [int(i) for i in (technic_idx if isinstance(technic_idx, (list, tuple, set, pd.Series)) else [technic_idx])]
+        idx_list = [int(i) for i in (technic_idx if isinstance(technic_idx, (list, tuple, set, pd.Series, pd.Index)) else [technic_idx])]
         max_idx = len(unique_ids) - 1
         for i in idx_list:
             if i < 0 or i > max_idx:
@@ -492,3 +502,296 @@ def plot_route_stat_boxplots(route_stats: pd.DataFrame, metrics=("distance_m", "
         plt.ylabel(ylabel)
         plt.xlabel("Cluster")
         plt.show()
+
+
+def plot_state_breakdown_by_tracker(breakdown_df: pd.DataFrame, n_trackers=3,
+                                     label_map: Optional[dict] = None,
+                                     bar_height: float = 0.45, min_figsize=(8, 3)):
+    """Stacked horizontal bar chart of per-tracker state-time share.
+
+    breakdown_df: output of cycle_classification.state_time_breakdown_by_tracker
+        (index = tracker_id, columns = state, values = fraction of that
+        tracker's own tracked time — rows sum to 1.0).
+    n_trackers: how many trackers to plot — an int (first N rows of
+        breakdown_df), or "all" to plot every tracker in it.
+    label_map: optional {tracker_id: display_label}, e.g.
+        tracker_list_df.set_index("id")["label"].to_dict(), used for the
+        y-axis tick labels instead of raw tracker_id.
+    """
+    work = breakdown_df if n_trackers == "all" else breakdown_df.head(int(n_trackers))
+    if work.empty:
+        print("No trackers to plot.")
+        return None, None
+
+    states = [s for s in STATE_ORDER if s in work.columns] + \
+             [s for s in work.columns if s not in STATE_ORDER]
+
+    fig_h = max(min_figsize[1], bar_height * len(work) + 1.2)
+    fig, ax = plt.subplots(figsize=(min_figsize[0], fig_h))
+
+    y_pos = np.arange(len(work))
+    left = np.zeros(len(work))
+    for state in states:
+        vals = (work[state] * 100).to_numpy()
+        color = STATE_COLOR_MAP.get(state, "#898781")
+        ax.barh(y_pos, vals, left=left, height=0.7, color=color,
+                edgecolor="white", linewidth=0.5, label=state)
+        for yi, (v, l0) in enumerate(zip(vals, left)):
+            if v >= 4:  # selective labeling — skip slivers too small to hold text
+                ax.text(l0 + v / 2, yi, f"{v:.0f}%", ha="center", va="center",
+                         fontsize=8, color="black")
+        left += vals
+
+    labels = [label_map.get(tid, str(tid)) if label_map else str(tid) for tid in work.index]
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("Share of tracked time (%)")
+    ax.set_title(f"State-time breakdown by truck (dt-weighted), n={len(work)}")
+    ax.grid(axis="x", alpha=0.3)
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=len(states),
+              fontsize=9, frameon=False)
+    fig.tight_layout()
+    plt.show()
+    return fig, ax
+
+
+def plot_state_map(classified_df: pd.DataFrame, zones_gdf, n_trackers=3, tracker_ids=None,
+                    label_map: Optional[dict] = None, figsize=(10, 10),
+                    point_size: float = 6, zone_alpha: float = 0.12):
+    """Plot GPS pings on the map, colored by classify_segments state — the
+    spatial counterpart to plot_state_breakdown_by_tracker.
+
+    classified_df: output of cycle_classification.classify_segments (needs
+        tracker_id, lat, lng, state columns).
+    zones_gdf: zone polygons (zones.build_zone_geodataframe output), drawn
+        underneath as light context, colored by zone_material_type.
+    n_trackers / tracker_ids: pick trucks the same way as
+        plot_state_breakdown_by_tracker — explicit tracker_ids, or the
+        first n_trackers (int or "all") by order of first appearance.
+    """
+    if tracker_ids is not None:
+        trackers = list(tracker_ids) if isinstance(tracker_ids, (list, tuple, set, pd.Series, pd.Index)) else [tracker_ids]
+    else:
+        unique_ids = pd.Series(classified_df["tracker_id"].dropna()).drop_duplicates().reset_index(drop=True)
+        trackers = unique_ids.tolist() if n_trackers == "all" else unique_ids.head(int(n_trackers)).tolist()
+
+    work = classified_df[classified_df["tracker_id"].isin(trackers)]
+    if work.empty:
+        print("No pings to plot for the selected trackers.")
+        return None, None
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if zones_gdf is not None:
+        for _, row in zones_gdf.iterrows():
+            geom = row.geometry
+            if geom is None:
+                continue
+            color = ZONE_COLOR_MAP.get(row.get("zone_material_type"), ZONE_COLOR_MAP["other"])
+            x, y = geom.exterior.xy
+            ax.fill(x, y, facecolor=color, edgecolor=color, alpha=zone_alpha, linewidth=1)
+
+    present_states = work["state"].dropna().unique()
+    states = [s for s in STATE_ORDER if s in present_states] + \
+             [s for s in present_states if s not in STATE_ORDER]
+    for state in states:
+        g = work[work["state"] == state]
+        ax.scatter(g["lng"], g["lat"], s=point_size, c=STATE_COLOR_MAP.get(state, "#898781"),
+                   label=state, alpha=0.7, edgecolors="none")
+
+    if len(trackers) <= 6:
+        names = [str(label_map.get(t, t)) if label_map else str(t) for t in trackers]
+        title = f"Ping states on map — {', '.join(names)}"
+    else:
+        title = f"Ping states on map — {len(trackers)} trucks"
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_title(title)
+    ax.legend(loc="best", fontsize=9, markerscale=2)
+    ax.axis("equal")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    plt.show()
+    return fig, ax
+
+
+def plot_state_map_grid(classified_df: pd.DataFrame, zones_gdf, n_trackers=3, tracker_ids=None,
+                         label_map: Optional[dict] = None, ncols: int = 3,
+                         figsize_per_plot=(4, 4), point_size: float = 5,
+                         zone_alpha: float = 0.12, share_axes: bool = False):
+    """Small-multiples version of plot_state_map: one map subplot per truck,
+    pings colored by state, so trucks can be compared side by side instead
+    of overlaid on a single crowded map.
+
+    classified_df / zones_gdf / n_trackers / tracker_ids / label_map: same
+        meaning as plot_state_map.
+    """
+    if tracker_ids is not None:
+        trackers = list(tracker_ids) if isinstance(tracker_ids, (list, tuple, set, pd.Series, pd.Index)) else [tracker_ids]
+    else:
+        unique_ids = pd.Series(classified_df["tracker_id"].dropna()).drop_duplicates().reset_index(drop=True)
+        trackers = unique_ids.tolist() if n_trackers == "all" else unique_ids.head(int(n_trackers)).tolist()
+
+    if not trackers:
+        print("No trackers to plot.")
+        return None, None
+
+    present_states = classified_df["state"].dropna().unique()
+    states = [s for s in STATE_ORDER if s in present_states] + \
+             [s for s in present_states if s not in STATE_ORDER]
+
+    ncols = max(1, int(ncols))
+    nrows = math.ceil(len(trackers) / ncols)
+    fig_w, fig_h = max(4, ncols * figsize_per_plot[0]), max(3, nrows * figsize_per_plot[1])
+    fig, axes = plt.subplots(nrows, ncols, figsize=(fig_w, fig_h), squeeze=False,
+                              sharex=share_axes, sharey=share_axes)
+
+    for idx in range(nrows * ncols):
+        r, c = divmod(idx, ncols)
+        ax = axes[r, c]
+        if idx >= len(trackers):
+            ax.axis("off")
+            continue
+
+        tid = trackers[idx]
+        g = classified_df[classified_df["tracker_id"] == tid]
+
+        if zones_gdf is not None:
+            for _, row in zones_gdf.iterrows():
+                geom = row.geometry
+                if geom is None:
+                    continue
+                color = ZONE_COLOR_MAP.get(row.get("zone_material_type"), ZONE_COLOR_MAP["other"])
+                x, y = geom.exterior.xy
+                ax.fill(x, y, facecolor=color, edgecolor=color, alpha=zone_alpha, linewidth=1)
+
+        for state in states:
+            gs = g[g["state"] == state]
+            if gs.empty:
+                continue
+            ax.scatter(gs["lng"], gs["lat"], s=point_size, c=STATE_COLOR_MAP.get(state, "#898781"),
+                       alpha=0.75, edgecolors="none")
+
+        title = str(label_map.get(tid, tid)) if label_map else str(tid)
+        ax.set_title(f"{title} ({tid})" if label_map else title, fontsize=9)
+        ax.set_xlabel("Lng", fontsize=8)
+        ax.set_ylabel("Lat", fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.axis("equal")
+        ax.grid(True, alpha=0.3)
+
+    handles = [Patch(facecolor=STATE_COLOR_MAP.get(s, "#898781"), edgecolor="none", label=s) for s in states]
+    fig.legend(handles=handles, loc="lower center", ncol=len(states), fontsize=9, frameon=False,
+               bbox_to_anchor=(0.5, 0.0))
+    fig.suptitle(f"Ping states by truck (n={len(trackers)})", fontsize=12)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+    plt.show()
+    return fig, axes
+
+
+# Reserved status color (never a categorical series identity) — marks a
+# flagged/actionable finding, here: a DBSCAN cluster with no zone match.
+CANDIDATE_ZONE_COLOR = "#d03b3b"
+
+
+def plot_candidate_zones(candidate_df: pd.DataFrame, zones_gdf, top_n: int = 10,
+                          figsize=(9, 9), zone_alpha: float = 0.15):
+    """Plot candidate missing-zone locations over the surveyed zone polygons.
+
+    candidate_df: output of stops.candidate_missing_zones (index = stop_cluster;
+        columns lat, lng, total_dwell_hr, n_pings, n_trackers). Marker size is
+        scaled by total_dwell_hr; markers are numbered by rank (1 = most dwell
+        time) so they can be cross-referenced against the printed table.
+    """
+    work = candidate_df.head(top_n)
+    if work.empty:
+        print("No candidate clusters to plot.")
+        return None, None
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if zones_gdf is not None:
+        for _, row in zones_gdf.iterrows():
+            geom = row.geometry
+            if geom is None:
+                continue
+            color = ZONE_COLOR_MAP.get(row.get("zone_material_type"), ZONE_COLOR_MAP["other"])
+            x, y = geom.exterior.xy
+            ax.fill(x, y, facecolor=color, edgecolor=color, alpha=zone_alpha, linewidth=1)
+
+    max_dwell = work["total_dwell_hr"].max()
+    sizes = 80 + 400 * (work["total_dwell_hr"] / max_dwell) if max_dwell > 0 else 120
+    ax.scatter(work["lng"], work["lat"], s=sizes, c=CANDIDATE_ZONE_COLOR, edgecolors="white",
+               linewidths=1.2, alpha=0.85, zorder=5)
+    for rank, (_, row) in enumerate(work.iterrows(), start=1):
+        ax.annotate(str(rank), (row["lng"], row["lat"]), ha="center", va="center",
+                    fontsize=8, color="white", weight="bold", zorder=6)
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_title(f"Top {len(work)} candidate missing-zone locations\n"
+                 "(dense DBSCAN stop clusters outside all surveyed zones; marker size = total dwell hours)")
+    ax.axis("equal")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    plt.show()
+    return fig, ax
+
+
+def plot_dbscan_stop_clusters(labeled_stops: pd.DataFrame, zones_gdf, figsize=(10, 10),
+                               point_size: float = 8, zone_alpha: float = 0.15,
+                               noise_color: str = "#c3c2b7", annotate_clusters: bool = True):
+    """Plot every DBSCAN stop cluster (stops.cluster_and_label_stops output)
+    over the zone polygons, colored by cluster id, with noise pings shown
+    separately in muted gray.
+
+    Cluster ids are algorithm-assigned, not a fixed identity set (the count
+    varies with eps/min_samples), so colors cycle through a qualitative
+    colormap rather than a fixed categorical palette — same convention as
+    plot_point_clusters/plot_routes_over_zones elsewhere in this module.
+    Each cluster's centroid is ringed in black if it matched a known zone,
+    or in the reserved "candidate" red if it didn't (zone_mat_hit == "unplanned").
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if zones_gdf is not None:
+        for _, row in zones_gdf.iterrows():
+            geom = row.geometry
+            if geom is None:
+                continue
+            color = ZONE_COLOR_MAP.get(row.get("zone_material_type"), ZONE_COLOR_MAP["other"])
+            x, y = geom.exterior.xy
+            ax.fill(x, y, facecolor=color, edgecolor=color, alpha=zone_alpha, linewidth=1)
+
+    noise = labeled_stops[labeled_stops["stop_cluster"] == -1]
+    ax.scatter(noise["lng"], noise["lat"], s=point_size, c=noise_color, alpha=0.5,
+               edgecolors="none", label=f"noise (n={len(noise)})", zorder=3)
+
+    cluster_ids = sorted(labeled_stops.loc[labeled_stops["stop_cluster"] != -1, "stop_cluster"].unique())
+    cmap = plt.colormaps["tab20"].resampled(max(len(cluster_ids), 1))
+    for i, cid in enumerate(cluster_ids):
+        g = labeled_stops[labeled_stops["stop_cluster"] == cid]
+        color = cmap(i)
+        ax.scatter(g["lng"], g["lat"], s=point_size, c=[color], alpha=0.8, edgecolors="none", zorder=4)
+        if annotate_clusters:
+            clat, clng = g["lat"].mean(), g["lng"].mean()
+            matched = g["zone_mat_hit"].iloc[0] != "unplanned"
+            ax.scatter([clng], [clat], s=100, facecolors="none",
+                       edgecolors="black" if matched else CANDIDATE_ZONE_COLOR,
+                       linewidths=1.4, zorder=6)
+            ax.annotate(str(cid), (clng, clat), fontsize=7, ha="center", va="center", zorder=7)
+
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.set_title(f"DBSCAN stop clusters over zone map "
+                 f"(n_clusters={len(cluster_ids)}, noise={len(noise)}/{len(labeled_stops)})")
+    ax.legend(loc="best", fontsize=9, markerscale=2)
+    ax.axis("equal")
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    plt.show()
+    return fig, ax
