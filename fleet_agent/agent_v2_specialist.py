@@ -25,7 +25,7 @@ DEFAULT_ZONE = 25559
 ZONE_ALIASES = {"bn": 25559, "baruun": 25559, "baruun naran": 25559}
 
 _NO_DATA_MSG = ("No diagnosis has been precomputed for that period yet. Run "
-                "`python agent/preprocess_v2.py` to build it.")
+                "`python fleet_agent/preprocess_v2.py` to build it.")
 
 # The tie rule. Measured over 30 zone-months across three material flows: every flip of the
 # top lever happened while the lead was 1-4 loads/day; none of the 20 cells with a lead of 5

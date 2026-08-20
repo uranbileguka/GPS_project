@@ -14,6 +14,8 @@ venv/
 # Rebuildable caches (parquet, ~250 MB) — agent_v2 rewrites these from the raw GPS
 agent/.cycle_cache/
 agent/.ping_cache/
+fleet_agent/.cycle_cache/
+fleet_agent/.ping_cache/
 
 # Data (raw GPS/zone/DEM data — large and/or mine-operational, not for git)
 data/*

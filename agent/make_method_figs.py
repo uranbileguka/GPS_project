@@ -18,6 +18,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, Rectangle
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# agent_v2 lives in fleet_agent/ — everything needed to RUN the agent was moved there,
+# leaving this folder for the method write-up and its figures.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               os.pardir, 'fleet_agent'))
 import agent_v2 as v2
 
 HERE = os.path.dirname(os.path.abspath(__file__))

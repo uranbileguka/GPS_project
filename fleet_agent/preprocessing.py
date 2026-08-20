@@ -3,13 +3,13 @@
 Turns raw gps_data_<year>-<month>.csv pings into small, pre-aggregated CSVs
 under data/agent_data/ so gps_fleet_agent.ipynb only ever reads a handful of
 rows per question instead of running geopandas/DBSCAN over millions of pings
-at answer time (see agent/gps_fleet_agent.ipynb for the crash that motivated
+at answer time (see fleet_agent/gps_fleet_agent.ipynb for the crash that motivated
 this split).
 
 Scoped to the BN sub-fleet and BN zones only for now (drop_other on trackers
 and zones). Run directly:
 
-    python agent/preprocessing.py
+    python fleet_agent/preprocessing.py
 
 Output layout (all under data/agent_data/):
 - tracker_list_bn.csv     BN tracker inventory (technic_type, technic_m_type)

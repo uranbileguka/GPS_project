@@ -1,5 +1,5 @@
 """Print the head of every CSV under data/agent_data/ — a quick sanity check
-after running agent/preprocessing.py. Run directly:
+after running fleet_agent/preprocessing.py. Run directly:
 
     python agent/inspect_agent_data.py
 """
@@ -18,12 +18,12 @@ N_ROWS = 5
 
 def main() -> None:
     if not AGENT_DATA_DIR.exists():
-        print(f"{AGENT_DATA_DIR} doesn't exist yet — run `python agent/preprocessing.py` first.")
+        print(f"{AGENT_DATA_DIR} doesn't exist yet — run `python fleet_agent/preprocessing.py` first.")
         return
 
     files = sorted(AGENT_DATA_DIR.glob("*.csv"))
     if not files:
-        print(f"No CSVs found in {AGENT_DATA_DIR} yet — run `python agent/preprocessing.py` first.")
+        print(f"No CSVs found in {AGENT_DATA_DIR} yet — run `python fleet_agent/preprocessing.py` first.")
         return
 
     for f in files:

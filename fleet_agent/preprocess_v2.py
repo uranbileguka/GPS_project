@@ -9,8 +9,8 @@ turn.
 This script does not touch preprocessing.py or anything it writes; it adds files with its
 own names to the same folder.
 
-    python agent/preprocess_v2.py                 # every zone, every month with raw GPS
-    python agent/preprocess_v2.py 25559 2025-11   # one zone, one month
+    python fleet_agent/preprocess_v2.py                 # every zone, every month with raw GPS
+    python fleet_agent/preprocess_v2.py 25559 2025-11   # one zone, one month
 
 Writes, under data/agent_data/:
     diagnosis_<zone_id>_<YYYY-MM>.json    full diagnose_v2() output

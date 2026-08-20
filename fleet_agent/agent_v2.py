@@ -218,7 +218,7 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
                 .sort_values(['tracker_id', 'get_time']).reset_index(drop=True))
 
     # The state machine that turns visits into trips lives in gps_lib.cycles.extract_cycles,
-    # which agent/preprocessing.py also calls. It used to be duplicated here, and the two
+    # which fleet_agent/preprocessing.py also calls. It used to be duplicated here, and the two
     # copies drifted: the shared one kept three defects for five days after this one was
     # fixed, and nothing broke loudly enough to notice. One copy now.
     tagged = tagged.rename(columns={'zone_id': 'zone_id_hit',
