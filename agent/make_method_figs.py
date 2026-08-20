@@ -77,8 +77,12 @@ def fig_pipeline():
 
 
 def fig_phases():
-    ph = [('loading\n(at the load zone)', 21.1, TEAL), ('haul\n(loaded)', 74.0, GREY),
-          ('dumping\n(at the dump)', 5.2, ORANGE), ('return\n(empty)', 88.0, GREY)]
+    c = cyc()
+    med = lambda k: float(c[k].median()) / 60
+    ph = [('loading\n(at the load zone)', med('dwell_s'), TEAL),
+          ('haul\n(loaded)', med('haul_s'), GREY),
+          ('dumping\n(at the dump)', med('dump_s'), ORANGE),
+          ('return\n(empty)', med('return_s'), GREY)]
     fig, ax = plt.subplots(figsize=(12, 2.6))
     x = 0
     for lab, w, c in ph:
@@ -88,7 +92,7 @@ def fig_phases():
         ax.text(x + w / 2, .2, f'{w:.0f} min', ha='center', va='top', fontsize=9.5, color='#333')
         x += w
     ax.set_xlim(-2, x + 2); ax.set_ylim(0, 1); ax.axis('off')
-    ax.set_title(f'One cycle, four phases — BN median, {x:.0f} min door to door',
+    ax.set_title(f'One cycle, four phases — BN median durations, {x:.0f} min in total',
                  weight='bold', pad=8)
     save(fig, 'c_fig_phases.png')
 

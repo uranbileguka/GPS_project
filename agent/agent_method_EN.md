@@ -134,16 +134,18 @@ The 11 zones with polygon vertices are exactly the load and dump zones — which
 
 ![phases](c_fig_phases.png)
 
-| Phase | Defined as | BN mean |
-|---|---|---|
-| **HAUL** (loaded) | `depart_load → arrive_unload` | 75.2 min |
-| **DUMP** | `arrive_unload → depart_unload` | 18.9 min |
-| **RETURN** (empty) | `depart_unload → arrive_load` | 87.8 min |
-| **DWELL** at the load zone | `arrive_load → next depart_load` | 50.3 min |
+| Phase | Defined as | BN median | BN mean |
+|---|---|---|---|
+| **STAY** at the load zone | `arrive_load → depart_load`, same visit | **21.1 min** | 24.2 |
+| **HAUL** (loaded) | `depart_load → arrive_unload` | **71.5 min** | 80.1 |
+| **DUMP** | `arrive_unload → depart_unload` | **1.6 min** | 5.3 |
+| **RETURN** (empty) | `depart_unload → arrive_load` | **93.5 min** | 173.3 |
 
-The dwell covers loading itself plus any waiting to be loaded.
+The stay covers loading itself plus any waiting to be loaded.
 
-> Four phases, defined purely by the four timestamps. Haul loaded, from leaving the load zone to arriving at the dump. Dump. Return empty, from leaving the dump to arriving back. And dwell at the load zone, which covers loading itself and any waiting to be loaded. BN means are 75, 19, 88 and 50 minutes.
+**Medians are quoted throughout, not means.** Look at the return leg: median 93.5 min, mean 173.3. The mean is dragged by a small number of very long trips — and those are real trips, kept on purpose (Step 2). A mean would describe none of them well.
+
+> Four phases, defined by the four timestamps. The stay at the load zone, which covers loading itself and any waiting to be loaded. Haul loaded, from leaving the load zone to arriving at the dump. Dump. And return empty. BN medians are 21, 72, 2 and 94 minutes. We quote medians rather than means throughout: on the return leg the median is 94 minutes and the mean is 173, dragged by a small number of very long trips that are real and kept on purpose.
 
 ---
 ---
@@ -489,7 +491,7 @@ Name a single winner only if it leads the second by **≥ 5 loads/day**.
 
 | | Value | Basis |
 |---|---|---|
-| **floor** | **+21%** | every normal day matches this fleet's own best day — *it has been achieved* |
+| **floor** | **+21%** | every normal day matches this fleet's own best day — **120 loads against an average of 98.8 over the month's 26 normal days**; *it has been achieved* |
 | of which | +6% | more trucks turned out — maintenance |
 | of which | **+13%** | **more trips per truck — the part that depends on dispatch** |
 | **ceiling** | +38% | all in-loop delay removed at once — *never observed* |
