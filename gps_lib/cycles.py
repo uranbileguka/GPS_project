@@ -21,7 +21,8 @@ except ImportError:  # geopandas/shapely only needed for the fast zone-hit join
 
 import matplotlib.pyplot as plt
 
-MAX_CYCLE_HOURS = 6  # drop cycles longer than this (tracker offline / shift gap)
+MAX_CYCLE_HOURS = 6   # cycles longer than this are FLAGGED (over_max_hours), not dropped
+STOP_SPEED_KMH = 2    # at or below this a truck counts as stopped
 
 
 # --------------------------------------------------------------------------- #
@@ -86,6 +87,11 @@ def extract_cycles(gps_hits_df: pd.DataFrame, max_cycle_hours: float = MAX_CYCLE
         t = g["get_time"].values
         la = g["lat"].values.astype(float)
         lo = g["lng"].values.astype(float)
+        # speed column is 'speed_kmh' downstream of preprocess.add_motion_features and
+        # 'speed' in the raw feed; accept either. Without one, every visit counts as a stop
+        # and load drive-throughs come back.
+        spd_col = next((c for c in ("speed_kmh", "speed") if c in g.columns), None)
+        stopped = (g[spd_col].values <= STOP_SPEED_KMH) if spd_col else np.ones(len(g), bool)
         info = g.iloc[0]
 
         # cumulative road distance (km) along this tracker's points
@@ -100,6 +106,17 @@ def extract_cycles(gps_hits_df: pd.DataFrame, max_cycle_hours: float = MAX_CYCLE
             return round(max(0.0, cum[ib] - cum[ia]), 3)
 
         # collapse consecutive in-zone points into visits
+        #
+        # A LOAD visit only counts if the truck actually stopped inside the zone. Presence
+        # alone lets a truck that clips the corner of the polygon on its way past close a
+        # cycle: measured on BN November, 41% of load visits lasted under a minute (median
+        # 12 s, 4 pings). Loading requires the truck to stand still, so require one ping at
+        # or below STOP_SPEED_KMH.
+        #
+        # UNLOAD visits are deliberately NOT held to that test. Only 43% of them contain a
+        # stopped ping, because the stockpile polygons were drawn once while the tipping
+        # face keeps moving; requiring a stop there discards real trips. Reaching the dump
+        # area is taken as evidence the load was delivered.
         visits, i, n = [], 0, len(g)
         while i < n:
             if pd.isna(zid[i]):
@@ -108,18 +125,32 @@ def extract_cycles(gps_hits_df: pd.DataFrame, max_cycle_hours: float = MAX_CYCLE
             j = i
             while j + 1 < n and zid[j + 1] == zid[i]:
                 j += 1
-            visits.append((lt[i], zid[i], mat[i], t[i], t[j]))
+            if lt[i] != "load" or stopped[i:j + 1].any():
+                visits.append((lt[i], zid[i], mat[i], t[i], t[j], i, j))
             i = j + 1
+
+        def max_gap_s(a, b):
+            """Largest hole between consecutive pings in [a, b] — what tells a genuinely
+            slow trip apart from a stretch where the tracker was simply off."""
+            w = t[a:b + 1]
+            return float(np.diff(w).max() / np.timedelta64(1, "s")) if len(w) > 1 else 0.0
 
         # state machine: load -> unload -> load
         pend_load = pend_unload = None
-        for vtype, vz, vm, arr, dep in visits:
+        n_unload = 0
+        for vtype, vz, vm, arr, dep, vi, vj in visits:
             if vtype == "load":
                 if pend_load is not None and pend_unload is not None:
-                    dl, dz, dm = pend_load
+                    dl, dz, dm, dj = pend_load
                     ua, ud, uz, um = pend_unload
                     cyc = (arr - dl) / np.timedelta64(1, "s")
-                    if 0 < cyc <= max_cycle_hours * 3600:
+                    # Every load->unload->load trip is emitted. Dropping the long ones as
+                    # "tracker offline / shift gap" removed 286 of BN's 2 698 November trips
+                    # and handed their time to the next row's dwell. Duration cannot tell a
+                    # slow trip from a tracker that was switched off — 54% of the dropped
+                    # trips had continuous pings — but a hole in the ping stream can, so
+                    # record that and let the caller decide.
+                    if cyc > 0:
                         rows.append(dict(
                             tracker_id=tid, region=info["technic_m_type"], truck=info["label"],
                             load_zone=int(dz), load_mat=dm, unload_zone=int(uz), unload_mat=um,
@@ -129,13 +160,28 @@ def extract_cycles(gps_hits_df: pd.DataFrame, max_cycle_hours: float = MAX_CYCLE
                             dump_s=(ud - ua) / np.timedelta64(1, "s"),
                             return_s=(arr - ud) / np.timedelta64(1, "s"), cycle_s=cyc,
                             haul_km=pkm(dl, ua), return_km=pkm(ud, arr), cycle_km=pkm(dl, arr),
+                            # the load-zone stay measured from THIS visit's own arrival and
+                            # departure — not the next row's departure minus this arrival,
+                            # which spans any excursion the truck made in between
+                            dwell_own_s=(dep - arr) / np.timedelta64(1, "s"),
+                            max_gap_s=max_gap_s(dj, vi), n_unload_visits=n_unload,
+                            over_max_hours=bool(cyc > max_cycle_hours * 3600),
                         ))
-                    pend_load, pend_unload = (dep, vz, vm), None
+                    pend_load, pend_unload, n_unload = (dep, vz, vm, vj), None, 0
                 else:
-                    pend_load = (dep, vz, vm)
+                    pend_load = (dep, vz, vm, vj)
             else:  # unload
                 if pend_load is not None:
-                    pend_unload = (arr, dep, vz, vm) if pend_unload is None else (pend_unload[0], dep, pend_unload[2], pend_unload[3])
+                    # FIRST unload visit only. Keeping the first arrival and extending to the
+                    # LAST departure booked everything in between — including time parked
+                    # well away from any dump — as dump dwell: only 40% of that window was
+                    # actually at a dump. A load is dumped once; the rest belongs to the
+                    # return leg.
+                    if pend_unload is None:
+                        pend_unload = (arr, dep, vz, vm)
+                        n_unload = 1
+                    else:
+                        n_unload += 1
 
     cycles = pd.DataFrame(rows)
     if not cycles.empty:
