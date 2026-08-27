@@ -59,7 +59,7 @@ What the ping layer adds:
 
 use_pings=False keeps the old path for speed. It is KNOWN-BIASED; the output says so.
 """
-import os, sys, json, glob, re
+import os, sys, json, glob, re, hashlib
 import numpy as np, pandas as pd
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -551,7 +551,12 @@ def load_pings(month, trucks):
     """Raw GPS for these trucks in this month. First call reads the (300-800 MB) monthly CSV
     and caches a small parquet in analysis/.ping_cache; later calls are instant."""
     os.makedirs(PING_CACHE, exist_ok=True)
-    cache = os.path.join(PING_CACHE, f'pings_{month}_{len(trucks)}.parquet')
+    # Key on WHICH trucks, not how many. The cache used to be named by len(trucks), so any
+    # two fleets of the same size collided: asking for 22 Reject trucks returned the parquet
+    # built earlier for 22 BN trucks, silently, and every number computed from it was wrong.
+    ids = ','.join(sorted(str(t) for t in trucks))
+    tag = f'{len(trucks)}-{hashlib.sha1(ids.encode()).hexdigest()[:8]}'
+    cache = os.path.join(PING_CACHE, f'pings_{month}_{tag}.parquet')
     if os.path.exists(cache):
         return pd.read_parquet(cache)
     y, m = month.split('-')
@@ -709,6 +714,41 @@ def locate_unmapped(cyc, pings, boxes, eps_m=UNMAPPED_EPS_M):
     return P
 
 
+def dump_activity(cyc, pings):
+    """Seconds standing still, and seconds moving, inside each cycle's unload window.
+
+    Every other bucket in this layer is charged by what the truck was DOING; `dump` was the
+    one left charged by which polygon the truck was IN. That only matches on a small dump.
+    Measured on 2025-11: of the time booked as dumping, BN spends 28% of it driving and
+    Reject 75% — Reject's dump polygon is 357 ha and a truck covers 2.5 km inside it, so its
+    top-ranked lever was three quarters travel time.
+
+    Returns two arrays aligned to `cyc`. Cycles whose pings are missing come back as zero and
+    drop out of both baselines rather than counting as an instant dump.
+    """
+    stop_s = np.zeros(len(cyc))
+    move_s = np.zeros(len(cyc))
+    pos = {t: i for i, t in enumerate(cyc.index)}
+    P = pings.sort_values(['tracker_id', 'get_time'])
+    for tid, g in P.groupby('tracker_id'):
+        t = g.get_time.values
+        sp = g.speed.values.astype(float)
+        sub = cyc[cyc.tracker_id == tid]
+        for idx, a, b in zip(sub.index, sub.arrive_unload.values, sub.depart_unload.values):
+            i, j = np.searchsorted(t, [np.datetime64(a), np.datetime64(b)], side='left')
+            if j <= i:
+                continue
+            w = slice(i, j + 1)
+            dt = np.diff(t[w]) / np.timedelta64(1, 's')
+            if not len(dt):
+                continue
+            moving = sp[w][:-1] > STOP_SPEED
+            k = pos[idx]
+            stop_s[k] = float(dt[~moving].sum())
+            move_s[k] = float(dt[moving].sum())
+    return stop_s, move_s
+
+
 def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False):
     """The 2026-08-07 replacement for the road half of tag_causes().
     Load-zone queue / idle / overnight still come from tag_causes(); what changes is that the
@@ -727,8 +767,17 @@ def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False)
     base_b, reservoir, baselines, svc_load, inloop_mean = tag_causes(cyc, cut_min, ff_q, svc_q)
     h = lambda x: float(np.nansum(np.maximum(0, x))) / 60
 
+    # `dump` is rebuilt here from the pings rather than taken from base_b, which measures the
+    # whole unload window. Standing still is dumping; driving across the dump area is travel
+    # and gets its own bucket so the time is not silently dropped from the budget.
+    d_stop, d_move = dump_activity(cyc, pings)
+    svc_dump = float(np.quantile(d_stop[d_stop > 0], svc_q)) if (d_stop > 0).any() else 0.0
+    ff_dump = float(np.quantile(d_move[d_move > 0], ff_q)) if (d_move > 0).any() else 0.0
     buckets = {'queue_shovel': base_b['queue'], 'load_solo': base_b['load_solo'],
-               'dump': base_b['dump']}
+               'dump': float(np.maximum(0, d_stop - svc_dump).sum()) / 3600,
+               'dump_area_driving': float(np.maximum(0, d_move - ff_dump).sum()) / 3600}
+    baselines['svc_dump_min'] = svc_dump / 60
+    baselines['ff_dump_area_min'] = ff_dump / 60
     stations = {}
     for b in st_boxes:
         name = b['name']
@@ -872,7 +921,10 @@ LEVER_TEXT = {
                            'a: shorten the loop'),
     'load_solo':          ('Slow at the shovel with nobody else there (cause unknown)',
                            'a: shorten the loop'),
-    'dump':               ('Dump spotting / congestion', 'a: shorten the loop'),
+    'dump':               ('Dump spotting / congestion — STANDING time only',
+                           'a: shorten the loop'),
+    'dump_area_driving':  ('Driving inside the dump area — the tipping face is far in from '
+                           'the boundary', 'a: shorten the loop'),
     'road_haul':          ('Haul road, loaded — DRIVING time only', 'a: shorten the loop'),
     'road_return':        ('Haul road, empty — DRIVING time only', 'a: shorten the loop'),
     'stopped_unmapped':   ('Stopped at places several trucks share that have no polygon '
@@ -903,7 +955,13 @@ TIE_MARGIN = 5.0        # #1 must beat #2 by this many loads/day to be called a 
 NON_DISPATCH = {'offloop_stop': 'Stopped off the loop (car park, yard) -> roster / logistics',
                 'single_truck_stop': 'Stopped where only one or two trucks ever stop -> that '
                                      'vehicle, not dispatch',
-                'unrecorded_gap': 'Phase time the GPS did not record -> data quality, not a lever'}
+                'unrecorded_gap': 'Phase time the GPS did not record -> data quality, not a lever',
+                # Real, measured, and we know exactly what it is — which is why it does not
+                # belong under "measured but not explained" either. What a dispatcher cannot
+                # do is move the tipping face closer to the boundary. On Reject that is 676
+                # truck-h a month and would otherwise rank first, as advice nobody can act on.
+                'dump_area_driving': 'Driving inside the dump area to reach the tipping face '
+                                     '-> where the face sits, mine planning not dispatch'}
 # In-loop waste we can measure but not name. Real lost time, so it stays in the budget, but it
 # is flagged so nobody reads it as an actionable lever.
 UNATTRIBUTED = {'stopped_unmapped'}
@@ -922,6 +980,8 @@ def rank_levers_general(buckets, reservoir, cap, station_labels=None):
     station_labels = station_labels or {}
     lv = []
     for k, v in buckets.items():
+        if k in NON_DISPATCH:            # buckets were not filtered here before; only the
+            continue                     # reservoir was, so a non-dispatch bucket ranked
         txt, mech = _lever_text(k, station_labels)
         lv.append(dict(cause=txt, key=k, mech=mech, bucket_truck_h=round(v),
                        new_loads=round(shorten(v), 1), gain=round(shorten(v) - loads, 1),
@@ -945,13 +1005,22 @@ def rank_levers_general(buckets, reservoir, cap, station_labels=None):
                          else f'#1 clears #2 by {margin} loads/day — a real winner'))
     staffing = []
     for k, txt in NON_DISPATCH.items():
-        v = reservoir.get(k, 0.0)
+        # a bucket is time inside the loop -> removing it SHORTENS the cycle; a reservoir is
+        # time outside the loop -> recovering it ADDS looping hours. Same list, two mechanisms.
+        if k in buckets:
+            v, new_loads = buckets[k], shorten(buckets[k])
+            mech = 'a: shorten the loop (NOT dispatch)'
+            note = ('in-loop time a dispatcher cannot recover; it is set by where the tipping '
+                    'face is, so it is a question for mine planning')
+        else:
+            v, new_loads = reservoir.get(k, 0.0), add_h(reservoir.get(k, 0.0))
+            mech = 'b: roster / logistics (NOT dispatch)'
+            note = 'off-loop time a dispatcher cannot recover; some of it is legitimate'
         if v <= 0:
             continue
-        staffing.append(dict(cause=txt, key=k, mech='b: roster / logistics (NOT dispatch)',
-                             reservoir_truck_h=round(v), new_loads=round(add_h(v)),
-                             gain=round(add_h(v) - loads),
-                             note='off-loop time a dispatcher cannot recover; some of it is legitimate'))
+        staffing.append(dict(cause=txt, key=k, mech=mech, reservoir_truck_h=round(v),
+                             new_loads=round(new_loads), gain=round(new_loads - loads),
+                             note=note))
     staffing = sorted(staffing, key=lambda x: -x['gain'])
     return lv, round(cyc_h), staffing, verdict
 
