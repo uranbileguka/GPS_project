@@ -12,6 +12,7 @@ other fetchers, so adding it does not slow the notebook down.
 """
 import json
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -22,7 +23,42 @@ except Exception:                                  # running outside the repo
     AGENT_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "agent_data"
 
 DEFAULT_ZONE = 25559
-ZONE_ALIASES = {"bn": 25559, "baruun": 25559, "baruun naran": 25559}
+# The three material flows, by the words a person would actually type. An unrecognised name
+# used to fall through to BN, so a question about Middling came back with BN's answer and
+# nothing said so.
+ZONE_ALIASES = {
+    "bn": 25559, "baruun": 25559, "baruun naran": 25559, "coal": 25559, "raw coal": 25559,
+    "reject": 25384, "rejects": 25384, "waste": 25384, "gangue": 25384,
+    "middling": 25385, "middlings": 25385, "middling coal": 25385,
+}
+ZONE_LABEL = {25559: "BN (raw coal, pit to plant)",
+              25384: "Reject (waste rock, plant to the reject dump)",
+              25385: "Middling (middlings, plant to the nearby stockpiles)"}
+# Only the diagnosis specialist covers all three. preprocessing.py builds the daily/monthly
+# tables for the BN sub-fleet alone, so the other four specialists cannot answer about the
+# yard flows at all — saying so is better than handing back a BN number under another name.
+BN_ONLY_SPECIALISTS = ("cycle_performance", "idle_analysis", "route_zone_qa", "fleet_health")
+
+# Every message that says "I cannot answer this" carries this marker, and the caller returns
+# it to the user verbatim instead of passing it to the LLM. Handed over as data context these
+# do the opposite of what they say: with the diagnosis prompt asking for a ranked lever list
+# and no data to rank, the model invented one ("BN: +15 loads") and, from the list of
+# available files, a fabricated "one thing we cannot explain" paragraph. Plugging each entry
+# point separately missed the second one, so the marker is on the messages themselves.
+NO_ANSWER = '[[NO_ANSWER]]'
+
+
+def is_refusal(text) -> bool:
+    return isinstance(text, str) and text.startswith(NO_ANSWER)
+
+
+def refusal(text: str) -> str:
+    return NO_ANSWER + text
+
+
+def strip_marker(text: str) -> str:
+    return text[len(NO_ANSWER):] if is_refusal(text) else text
+
 
 _NO_DATA_MSG = ("No diagnosis has been precomputed for that period yet. Run "
                 "`python fleet_agent/preprocess_v2.py` to build it.")
@@ -38,17 +74,116 @@ def _norm_month(month: str) -> str:
     return f"{int(year)}-{int(mon):02d}"
 
 
+class UnknownFlow(ValueError):
+    """A flow name we do not recognise. Raised rather than defaulted, so a question about a
+    flow this pipeline does not cover can never come back answered as BN."""
+
+
 def _resolve_zone(zone) -> int:
     if zone is None:
         return DEFAULT_ZONE
     if isinstance(zone, int) or str(zone).isdigit():
         return int(zone)
-    return ZONE_ALIASES.get(str(zone).strip().lower(), DEFAULT_ZONE)
+    key = str(zone).strip().lower()
+    if key in ZONE_ALIASES:
+        return ZONE_ALIASES[key]
+    raise UnknownFlow(zone)
+
+
+def flows_named(text: str) -> set:
+    """Zone ids whose name literally appears in the question.
+
+    Deterministic on purpose. Asking the router to extract the flow is what failed: given
+    "Which flow is worst — BN, reject or middling?" it named none of the three, the caller
+    fell back to BN, and BN's answer came back as if it had compared them. Three flow words
+    in the sentence and none extracted.
+    """
+    # Punctuation has to go first. Matching on space-padded words alone missed "for BN?" and
+    # "BN, reject or middling?" — the trailing mark is part of the token — so a question about
+    # another flow was answered from the selected one, which is the failure this guards.
+    t = ' ' + re.sub(r'[^a-z0-9]+', ' ', str(text).lower()).strip() + ' '
+    return {zid for name, zid in ZONE_ALIASES.items() if f' {name} ' in t}
+
+
+# Only unambiguous wordings. 'overall' and 'in total' also appear in ordinary questions
+# about a single flow and were catching those.
+_MINE_WIDE = ('whole mine', 'the mine', 'entire mine', 'entire fleet', 'whole fleet',
+              'all flows', 'all three flows', 'across the mine', 'site-wide', 'sitewide',
+              'mine-wide', 'mine wide')
+
+
+def mine_wide_message(text: str, active) -> Optional[str]:
+    """Refuse a mine-wide question rather than answering it from one flow.
+
+    This started as a scope note appended to the data context. The model ignored it: asked
+    what the whole mine should fix, with the note attached, it still opened with "the joint
+    first priority for the whole mine to fix" — BN's figures, and BN is 22 of the site's 44
+    trucks. A warning at the end of a long context does not survive a system prompt telling
+    the model to lead with the verdict, so the question is refused before the model sees it.
+    """
+    if flows_named(text) or not any(k in str(text).lower() for k in _MINE_WIDE):
+        return None
+    try:
+        cur = _resolve_zone(active)
+    except UnknownFlow:
+        return None
+    return refusal(
+        f"That question is mine-wide, and this specialist answers one flow at a time.\n"
+        f"The site runs two separate fleets over three flows:\n{flow_menu()}\n"
+        f"They haul different material over different distances, so their figures cannot be "
+        f"added or ranked against each other and no single answer covers the mine.\n"
+        f"The session is currently set to {ZONE_LABEL[cur]} — ask about that flow, or set "
+        f"FLOW to another one.")
+
+
+def wrong_flow_message(text: str, active) -> Optional[str]:
+    """Set when the question is about a flow other than the one currently selected."""
+    named = flows_named(text)
+    try:
+        cur = _resolve_zone(active)
+    except UnknownFlow:
+        return None                      # unknown-flow refusal handles it first
+    other = named - {cur}
+    if not other:
+        return None
+    names = ', '.join(ZONE_LABEL[z] for z in sorted(other))
+    return refusal(
+        f"This question names {names}, but the session is set to {ZONE_LABEL[cur]}.\n"
+        f"One flow is answered at a time — they are separate fleets hauling different "
+        f"material over different distances, so their figures cannot be compared or added.\n"
+        f"Set FLOW to the one you want and ask again, or pass flow=... to this question.")
+
+
+def flow_menu() -> str:
+    return "\n".join(f"  {name}" for name in ZONE_LABEL.values())
 
 
 def get_diagnosis(month: str, zone=None) -> Optional[dict]:
     path = AGENT_DATA_DIR / f"diagnosis_{_resolve_zone(zone)}_{_norm_month(month)}.json"
     return json.loads(path.read_text()) if path.exists() else None
+
+
+def unknown_flow_message(zone) -> Optional[str]:
+    """The refusal text if this flow name is not one we hold, else None.
+
+    Callers must return this to the user DIRECTLY and never pass it to the LLM. Handed over
+    as data context it does the opposite of what it says: the diagnosis system prompt asks
+    for a ranked lever list, and with no data to rank the model invented one — "BN: +15
+    loads, Reject: +10 loads", figures that exist nowhere. A refusal has to bypass the model,
+    not be given to it as an instruction.
+    """
+    if zone is None:
+        return None
+    try:
+        _resolve_zone(zone)
+    except UnknownFlow:
+        return refusal(_unknown_flow_msg(zone))
+    return None
+
+
+def _unknown_flow_msg(zone) -> str:
+    return (f"This pipeline has no flow called \"{zone}\". It covers three:\n{flow_menu()}\n"
+            f"Say which one you mean. Do NOT answer from another flow's numbers.")
 
 
 def available_diagnoses() -> str:
@@ -147,9 +282,13 @@ def _verdict_line(dx: dict) -> str:
         margin is not None and margin < TIE_MARGIN)
     if tied:
         names = verdict.get("top") or [top["cause"]] + ([runner["cause"]] if runner else [])
-        return (f"VERDICT: {' and '.join(names)} are TIED for first (lead {margin} loads/day, "
-                f"under the {TIE_MARGIN:g} the ranking can resolve). Report them together as "
-                f"joint first priority. Do NOT pick one over the other.")
+        gains = ', '.join(f"{l['cause'][:40]} +{l['gain']}" for l in levers[:2])
+        return (f"VERDICT: {' and '.join(names)} are TIED for first. Their own gains are "
+                f"{gains} — quote those. The {margin} loads/day between them is the GAP, not "
+                f"either item's gain, and must never be reported as what they are worth; it "
+                f"is under the {TIE_MARGIN:g} this ranking can resolve, which is why they are "
+                f"tied. Report them together as joint first priority, each with its own "
+                f"figure. Do NOT pick one over the other.")
     return (f"VERDICT: the first priority is {top['cause']} — about +{top['gain']:.1f} "
             f"loads/day, clearing the runner-up by {margin}. State it directly.")
 
@@ -194,12 +333,15 @@ def fetch_diagnosis(month: Optional[str] = None, zone=None, default_month: str =
     to the prompt: the verdict is pre-decided, the headline is a range, no ceiling is quoted,
     and the scope note says these buckets partition fleet time differently from the idle
     specialist's percentages."""
-    if year and not month:
-        return fetch_diagnosis_year(year, zone)
-    month = month or default_month
-    dx = get_diagnosis(month, zone)
+    try:
+        if year and not month:
+            return fetch_diagnosis_year(year, zone)
+        month = month or default_month
+        dx = get_diagnosis(month, zone)
+    except UnknownFlow:
+        return refusal(_unknown_flow_msg(zone))
     if dx is None:
-        return f"{_NO_DATA_MSG}\n\nPrecomputed so far:\n{available_diagnoses()}"
+        return refusal(f"{_NO_DATA_MSG}\n\nPrecomputed so far:\n{available_diagnoses()}")
 
     thr, st = dx["throughput"], dx["stations"]
     obs, head, legs = dx["observed"], dx["headline"], dx["leg_decomposition"]
@@ -298,8 +440,10 @@ def _merge_places(months: list) -> list:
             for m in merged:
                 if _metres(here, (m["lat"], m["lng"])) <= _PLACE_MATCH_M:
                     w = m["truck_h"] + p["truck_h"]
-                    m["lat"] = (m["lat"] * m["truck_h"] + p["lat"] * p["truck_h"]) / w
-                    m["lng"] = (m["lng"] * m["truck_h"] + p["lng"] * p["truck_h"]) / w
+                    if w > 0:            # a place can round to 0 truck-h on a short flow;
+                        m["lat"] = (m["lat"] * m["truck_h"]      # weighting by it then
+                                    + p["lat"] * p["truck_h"]) / w   # divides by zero
+                        m["lng"] = (m["lng"] * m["truck_h"] + p["lng"] * p["truck_h"]) / w
                     m["truck_h"] = w
                     m["trucks"] = max(m["trucks"], p["trucks"])
                     if dx["month"][-2:] not in m["months"]:
@@ -325,8 +469,12 @@ def pool_year(year: str, zone=None) -> Optional[dict]:
     months = year_months(year, zone)
     if not months:
         return None
-    if any(set(b["key"] for b in m["levers"]) != set(months[0]["buckets_truck_h"])
-           for m in months):
+    # Compare each month's LEVER keys with each other. This used to compare lever keys with
+    # buckets_truck_h keys, which held only while every bucket was also a lever. It stopped
+    # holding the moment a bucket was excluded from the ranking as non-dispatch, and then no
+    # flow could ever pool — including BN, which had worked the day before.
+    key_sets = [set(l["key"] for l in m["levers"]) for m in months]
+    if any(k != key_sets[0] for k in key_sets):
         return None       # topology differs between months; the buckets are not addable
 
     days = sum(m["throughput"]["days"] for m in months)
@@ -339,10 +487,12 @@ def pool_year(year: str, zone=None) -> Optional[dict]:
     C = sum(min(m["stations"]["shovel_rate"], m["stations"]["dump_rate"])
             * m["throughput"]["op_hours"] * m["throughput"]["days"] for m in months) / days
 
+    # Sum the ranked levers only. Buckets held out of the ranking (non-dispatch) have no rank
+    # to collect, so reading them here raised StopIteration.
     H = {}
     for m in months:
-        for k, v in m["buckets_truck_h"].items():
-            H[k] = H.get(k, 0.0) + v
+        for l in m["levers"]:
+            H[l["key"]] = H.get(l["key"], 0.0) + l["bucket_truck_h"]
     per_month_rank = {k: [next(l["rank"] for l in m["levers"] if l["key"] == k) for m in months]
                       for k in H}
     label = {l["key"]: (l["cause"], l.get("unattributed", False)) for l in months[-1]["levers"]}
@@ -467,18 +617,27 @@ def fetch_diagnosis_year(year: str, zone=None) -> str:
     a firmer number than the months support, so the table shows all five and the text says to
     quote the spread across months rather than a single figure.
     """
-    yr = pool_year(year, zone)
+    try:
+        yr = pool_year(year, zone)
+    except UnknownFlow:
+        return refusal(_unknown_flow_msg(zone))
     if yr is None:
-        return (f"No year-level diagnosis can be built for {year}.\n\n"
-                f"Precomputed so far:\n{available_diagnoses()}")
+        return refusal(
+            f"No year-level diagnosis can be built for {year} on this flow. Its months do "
+            f"not share one station topology, so their buckets are not the same quantity "
+            f"and pooling them would add unlike things together. Ask month by month "
+            f"instead.\n\nPrecomputed so far:\n{available_diagnoses()}")
 
     v = yr["lever_verdict"]
     top, runner = yr["levers"][0], yr["levers"][1]
     if v["tied"]:
-        verdict = (f"VERDICT: over the whole of {year}, {top['cause']} and {runner['cause']} are "
-                   f"TIED for first (lead {v['margin']} loads/day, under the {TIE_MARGIN:g} the "
-                   f"ranking can resolve). Report them together as JOINT first priority, in the "
-                   f"opening sentence of the answer. Do NOT pick one over the other and do not "
+        verdict = (f"VERDICT: over the whole of {year}, {top['cause']} and {runner['cause']} "
+                   f"are TIED for first. Their own gains are +{top['gain']} and "
+                   f"+{runner['gain']} — quote those. The {v['margin']} loads/day between them "
+                   f"is the GAP, not either item's gain, and must never be reported as what "
+                   f"they are worth; it is under the {TIE_MARGIN:g} this ranking can resolve. "
+                   f"Report them together as JOINT first priority, in the opening sentence, "
+                   f"each with its own figure. Do NOT pick one over the other and do not "
                    f"present the list below as if position 1 beat position 2.")
     else:
         verdict = (f"VERDICT: over the whole of {year} the first priority is {top['cause']} — "
