@@ -63,9 +63,19 @@ def strip_marker(text: str) -> str:
 _NO_DATA_MSG = ("No diagnosis has been precomputed for that period yet. Run "
                 "`python fleet_agent/preprocess_v2.py` to build it.")
 
-# The tie rule. Measured over 30 zone-months across three material flows: every flip of the
-# top lever happened while the lead was 1-4 loads/day; none of the 20 cells with a lead of 5
-# or more ever flipped. A lead under 5 is reported as a tie, not as a winner.
+# The tie rule: a lead under this many loads/day is reported as a tie rather than a winner.
+#
+# This is a CONVENTION, not a measurement. An earlier comment here claimed it had been
+# measured over thirty zone-months across three material flows; no such sweep exists. The
+# only sweep on disk covers BN alone, and sweeping the baseline quantile over all fifteen
+# flow-months changes no flow's leading delay at all, because the leading buckets are built
+# from causal baselines that do not use that quantile. So the sweep cannot bound the
+# resolution either way.
+#
+# It is also a single absolute figure applied to flows of very different size: BN runs about
+# 89 loads/day, Reject between 222 and 507. Five loads is 6% of one and 1% of the other, so
+# the same number is a far stricter test on the yard flows for no stated reason. Treat the
+# value as provisional and say so wherever it is reported.
 TIE_MARGIN = 5.0
 
 

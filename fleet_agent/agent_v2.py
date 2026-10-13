@@ -99,6 +99,8 @@ GPS_GLOB = os.path.join(DATA_DIR, 'gps_data_{y}-{m}.csv')
 PING_CACHE = os.path.join(_HERE, '.ping_cache')
 BOX_BUFFER = 0.0009     # ~100 m around a zone's bounding box
 STOP_SPEED = 2          # km/h at or below = not moving
+MIN_SOLO = 30           # unobstructed observations needed before the causal
+                        # baseline is used instead of the percentile fallback
 DT_CAP = 300            # a GPS hole longer than this counts as this. Measured on 2025-11:
                         # only 0.70% of intervals exceed it, but they span 31% of the total
                         # elapsed time, so charging each in full to the preceding activity
@@ -727,11 +729,31 @@ def dump_activity(cyc, pings):
     Reject 75% — Reject's dump polygon is 357 ha and a truck covers 2.5 km inside it, so its
     top-ranked lever was three quarters travel time.
 
-    Returns two arrays aligned to `cyc`. Cycles whose pings are missing come back as zero and
-    drop out of both baselines rather than counting as an instant dump.
+    Returns three arrays aligned to `cyc`: seconds standing, seconds moving, and how many
+    other trucks were in the unloading area at the same time. Cycles whose pings are missing
+    come back as zero and drop out of both baselines rather than counting as an instant dump.
+
+    The concurrency count is what lets the unload baseline be measured the same way as the
+    loading one — the duration observed when nothing else was there — instead of a low
+    percentile of every unload. The two give very different answers: measured across the five
+    months, the causal estimate is a median of 1.9x the percentile, so the percentile was
+    booking roughly half of normal unloading as delay.
     """
     stop_s = np.zeros(len(cyc))
     move_s = np.zeros(len(cyc))
+    conc = np.zeros(len(cyc), dtype=int)
+
+    # how many unload windows overlap this one. Counting pairwise would be O(n^2) on 15 000
+    # cycles; the sorted-edge count below is the same number in one pass.
+    t0 = pd.to_datetime(cyc.arrive_unload).values.astype('datetime64[s]').astype(np.int64)
+    t1 = pd.to_datetime(cyc.depart_unload).values.astype('datetime64[s]').astype(np.int64)
+    ok = (t1 > t0)
+    if ok.any():
+        starts, ends = np.sort(t0[ok]), np.sort(t1[ok])
+        began = np.searchsorted(starts, t1, side='left')     # windows that had started
+        ended = np.searchsorted(ends, t0, side='right')      # windows already finished
+        conc = np.maximum(0, began - ended - 1)              # -1 drops the window itself
+        conc[~ok] = 0
     pos = {t: i for i, t in enumerate(cyc.index)}
     P = pings.sort_values(['tracker_id', 'get_time'])
     for tid, g in P.groupby('tracker_id'):
@@ -750,7 +772,7 @@ def dump_activity(cyc, pings):
             k = pos[idx]
             stop_s[k] = float(dt[~moving].sum())
             move_s[k] = float(dt[moving].sum())
-    return stop_s, move_s
+    return stop_s, move_s, conc
 
 
 def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False):
@@ -774,9 +796,18 @@ def tag_causes_pings(cyc, cut_min, month, ff_q=FF_Q, svc_q=SVC_Q, verbose=False)
     # `dump` is rebuilt here from the pings rather than taken from base_b, which measures the
     # whole unload window. Standing still is dumping; driving across the dump area is travel
     # and gets its own bucket so the time is not silently dropped from the budget.
-    d_stop, d_move = dump_activity(cyc, pings)
-    svc_dump = float(np.quantile(d_stop[d_stop > 0], svc_q)) if (d_stop > 0).any() else 0.0
-    ff_dump = float(np.quantile(d_move[d_move > 0], ff_q)) if (d_move > 0).any() else 0.0
+    d_stop, d_move, d_conc = dump_activity(cyc, pings)
+
+    def _unimpeded(v, q):
+        """Median over cycles with nothing else in the unloading area, as at the loading zone.
+        Falls back to the percentile only if no such cycle exists."""
+        solo = v[(v > 0) & (d_conc == 0)]
+        if len(solo) >= MIN_SOLO:
+            return float(np.median(solo))
+        return float(np.quantile(v[v > 0], q)) if (v > 0).any() else 0.0
+
+    svc_dump = _unimpeded(d_stop, svc_q)
+    ff_dump = _unimpeded(d_move, ff_q)
     buckets = {'queue_shovel': base_b['queue'], 'load_solo': base_b['load_solo'],
                'dump': float(np.maximum(0, d_stop - svc_dump).sum()) / 3600,
                'dump_area_driving': float(np.maximum(0, d_move - ff_dump).sum()) / 3600}
@@ -949,8 +980,10 @@ def _lever_text(key, station_labels):
             lab = station_labels.get(key[:-len(suffix)], key[:-len(suffix)])
             return (tmpl.format(lab), 'a: shorten the loop')
     return (key, 'a: shorten the loop')
-TIE_MARGIN = 5.0        # #1 must beat #2 by this many loads/day to be called a single winner;
-                        # swept evidence: rank flips only ever happen inside this band.
+TIE_MARGIN = 5.0        # #1 must beat #2 by this many loads/day to be called a single
+                        # winner. A convention, not a measured resolution -- see the note in
+                        # agent_v2_specialist.py. The claim of swept evidence that stood here
+                        # could not be traced to any sweep on disk.
 
 # Out-of-loop time a DISPATCHER cannot recover. Overnight parking is off-shift. The mid-trip
 # car park is the shift handover (91% of those stops begin in the 04-07 / 16-19 windows) and
