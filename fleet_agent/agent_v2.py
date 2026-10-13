@@ -99,7 +99,11 @@ GPS_GLOB = os.path.join(DATA_DIR, 'gps_data_{y}-{m}.csv')
 PING_CACHE = os.path.join(_HERE, '.ping_cache')
 BOX_BUFFER = 0.0009     # ~100 m around a zone's bounding box
 STOP_SPEED = 2          # km/h at or below = not moving
-DT_CAP = 300            # a GPS hole longer than this counts as this (0.3% of intervals)
+DT_CAP = 300            # a GPS hole longer than this counts as this. Measured on 2025-11:
+                        # only 0.70% of intervals exceed it, but they span 31% of the total
+                        # elapsed time, so charging each in full to the preceding activity
+                        # would let a handful of gaps dominate the accounting. The truncated
+                        # remainder is reported as unrecorded, not attributed.
 VISIT_GAP = 600         # re-entering after this long = a new visit
 STOP_FRAC = 0.5         # a day below this * median loads = a stoppage day, reported apart
 SHIFT_HOURS = {4, 5, 6, 7, 16, 17, 18, 19}
