@@ -7,13 +7,30 @@ Centralized here so the classification rule is defined exactly once.
 """
 import pandas as pd
 
+# Units the label rule gets wrong, checked against the register and the GPS records on
+# 2026-10-26. The rule "label contains HDU or BN" classifies 89 units as haul trucks; with
+# the three corrections below the set is 88 (41 HDU + 47 BN), every one a truck by label.
+#   46076  "#ВN-148 83-64УКА"      a BN haul truck whose label is written with a Cyrillic В,
+#                                   so the Latin "BN" pattern misses it. It makes 93-171 BN
+#                                   cycles a month (3.5-6.9% of the flow) and is a different
+#                                   vehicle from #BN149 (4-8 km apart at matched times).
+#   39377  "Засварын машин BN02"   repair vehicle; it formed 1-15 stockyard cycles a month.
+#   53448  "Кран-BN06"             crane; it never formed a cycle.
+# Both pipelines (fleet_agent/preprocessing.py and fleet_agent/agent_v2.build_cycles) select
+# trucks through these two functions, so the correction lives here and nowhere else.
+FORCE_DUMP = {46076}
+NOT_DUMP = {39377, 53448}
+FORCE_BN = {46076}
+
 
 def classify_technic_type(tracker_list_df: pd.DataFrame) -> pd.DataFrame:
-    """Tag each tracker as dump / loader / other from its label."""
+    """Tag each tracker as dump / loader / other from its label, then apply the exceptions."""
     df = tracker_list_df.copy()
     df["technic_type"] = "other"
     df.loc[df["label"].str.contains("HDU|BN", case=False, na=False), "technic_type"] = "dump"
     df.loc[df["label"].str.contains("HLW|ачигч", case=False, na=False), "technic_type"] = "loader"
+    df.loc[df["id"].isin(FORCE_DUMP), "technic_type"] = "dump"
+    df.loc[df["id"].isin(NOT_DUMP), "technic_type"] = "other"
     return df
 
 
@@ -22,6 +39,7 @@ def classify_technic_material_type(tracker_list_df: pd.DataFrame) -> pd.DataFram
     df = tracker_list_df.copy()
     df["technic_m_type"] = "other"
     df.loc[df["label"].str.contains("BN", case=False, na=False), "technic_m_type"] = "bn"
+    df.loc[df["id"].isin(FORCE_BN), "technic_m_type"] = "bn"
     return df
 
 

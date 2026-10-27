@@ -204,8 +204,13 @@ def build_cycles(month, max_cycle_hours=MAX_CYCLE_HOURS, cache=True):
     src = GPS_GLOB.format(y=y, m=int(m))
     if not os.path.exists(src):
         raise FileNotFoundError(f'raw GPS not found: {src}')
-    T = pd.read_csv(TRACKER_LIST)
-    T['technic_m_type'] = np.where(T.label.str.contains('BN', case=False, na=False), 'bn', 'other')
+    # Truck selection goes through gps_lib.classify, the same rule preprocessing.py uses, so
+    # the exceptions recorded there (a truck whose label uses a Cyrillic В, a repair vehicle
+    # and a crane that the label pattern admitted) apply to both pipelines. The technic_type
+    # column shipped in tracker_list.csv is the uncorrected pattern result and is not used.
+    from gps_lib import classify as _classify
+    T = _classify.classify_technic_material_type(
+        _classify.classify_technic_type(pd.read_csv(TRACKER_LIST)))
     dump = T[T.technic_type == 'dump']
 
     tp = pd.read_csv(src, low_memory=False).drop_duplicates()
